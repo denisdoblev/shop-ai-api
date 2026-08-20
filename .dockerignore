@@ -1,0 +1,35 @@
+# Dependencias
+node_modules
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# Compilación
+dist
+build
+.tsbuildinfo
+
+# Docker y Configuración
+Dockerfile
+docker-compose*
+.dockerignore
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+
+# Tests y Cobertura
+test
+coverage
+*.spec.ts
+*.test.ts
+
+# Varios
+README.md
+LICENSE
+.vscode
+.idea
+.DS_Store
+Thumbs.db
