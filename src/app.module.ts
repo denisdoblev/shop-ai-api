@@ -10,6 +10,7 @@ import {
 import { AuthModule } from './auth/auth.module';
 import { BrandsModule } from './brands/brands.module';
 import { CategoriesModule } from './categories/categories.module';
+import { AttributesModule } from './attributes/attributes.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { CategoriesModule } from './categories/categories.module';
     AuthModule,
     BrandsModule,
     CategoriesModule,
+    AttributesModule,
   ],
   controllers: [],
   providers: [],
