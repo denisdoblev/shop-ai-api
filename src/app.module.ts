@@ -8,6 +8,7 @@ import {
   typeOrmConfigFactory,
 } from './config';
 import { AuthModule } from './auth/auth.module';
+import { BrandsModule } from './brands/brands.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { AuthModule } from './auth/auth.module';
       useFactory: typeOrmConfigFactory,
     }),
     AuthModule,
+    BrandsModule,
   ],
   controllers: [],
   providers: [],
