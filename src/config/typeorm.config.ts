@@ -14,7 +14,7 @@ export const typeOrmConfigFactory = (
   autoLoadEntities: true,
   namingStrategy: new SnakeNamingStrategy(),
   synchronize: false,
-  migrations: [__dirname + '/../../db/migrations/*{.ts,.js}'],
+  migrations: [__dirname + '/../db/migrations/!(*.spec).{ts,js}'],
   logging:
     configService.get<string>('NODE_ENV') === 'development'
       ? ['error', 'warn']
