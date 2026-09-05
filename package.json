@@ -24,6 +24,9 @@
     "migration:run": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli migration:run -d ./src/db/data-source.ts",
     "migration:revert": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli migration:revert -d ./src/db/data-source.ts",
     "migration:create": "node ./scripts/create-migration.js",
+    "db:seed": "ts-node -r tsconfig-paths/register ./src/db/seeds/seed.ts",
+    "db:seed:dist": "node ./dist/db/seeds/seed.js",
+    "db:setup": "pnpm run migration:run && pnpm run db:seed",
     "docker:db": "docker compose up -d db",
     "docker:full": "docker compose --profile api up -d",
     "docker:stop": "docker compose down"
