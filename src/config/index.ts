@@ -1,3 +1,4 @@
+export * from './application.config';
 export * from './env-validation.config';
 export * from './logger.config';
 export * from './swagger.config';

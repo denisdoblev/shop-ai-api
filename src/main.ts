@@ -1,8 +1,7 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from 'nestjs-pino';
-import { setupSwagger } from './config';
+import { configureApplication, setupSwagger } from './config';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -10,15 +9,7 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
 
   app.useLogger(app.get(Logger));
-  app.setGlobalPrefix('api');
-
-  app.useGlobalPipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    }),
-  );
+  configureApplication(app);
 
   setupSwagger(app);
 

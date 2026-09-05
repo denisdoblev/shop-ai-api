@@ -8,7 +8,7 @@ export const loggerConfigFactory = (configService: ConfigService): Params => {
     pinoHttp: {
       level: nodeEnv === 'production' ? 'info' : 'debug',
       transport:
-        nodeEnv !== 'production'
+        nodeEnv === 'development'
           ? {
               target: 'pino-pretty',
               options: {
