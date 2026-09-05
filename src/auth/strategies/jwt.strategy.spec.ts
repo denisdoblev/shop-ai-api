@@ -5,6 +5,9 @@ import { JwtStrategy } from './jwt.strategy';
 import { User } from '../entities/user.entity';
 
 describe('JwtStrategy', () => {
+  const activeUserId = '11111111-1111-4111-8111-111111111111';
+  const missingUserId = '22222222-2222-4222-8222-222222222222';
+  const inactiveUserId = '33333333-3333-4333-8333-333333333333';
   let strategy: JwtStrategy;
   const mockRepo = {
     findOneBy: jest.fn(),
@@ -13,7 +16,7 @@ describe('JwtStrategy', () => {
   const findOneBy = mockRepo.findOneBy as jest.Mock;
 
   const mockConfigService = {
-    get: jest.fn().mockReturnValue('test-secret'),
+    getOrThrow: jest.fn().mockReturnValue('test-secret'),
   } as unknown as ConfigService;
 
   beforeEach(() => {
@@ -22,28 +25,28 @@ describe('JwtStrategy', () => {
   });
 
   it('returns user when payload contains valid id and user is active', async () => {
-    const user: Partial<User> = { id: 1, isActive: true };
+    const user: Partial<User> = { id: activeUserId, isActive: true };
     findOneBy.mockResolvedValue(user);
 
-    const result = await strategy.validate({ id: 1 });
+    const result = await strategy.validate({ id: activeUserId });
 
-    expect(findOneBy).toHaveBeenCalledWith({ id: 1 });
+    expect(findOneBy).toHaveBeenCalledWith({ id: activeUserId });
     expect(result).toBe(user);
   });
 
   it('throws UnauthorizedException when user is not found', async () => {
     findOneBy.mockResolvedValue(undefined);
 
-    await expect(strategy.validate({ id: 2 })).rejects.toThrow(
+    await expect(strategy.validate({ id: missingUserId })).rejects.toThrow(
       UnauthorizedException,
     );
   });
 
   it('throws UnauthorizedException when user is inactive', async () => {
-    const user: Partial<User> = { id: 3, isActive: false };
+    const user: Partial<User> = { id: inactiveUserId, isActive: false };
     findOneBy.mockResolvedValue(user);
 
-    await expect(strategy.validate({ id: 3 })).rejects.toThrow(
+    await expect(strategy.validate({ id: inactiveUserId })).rejects.toThrow(
       UnauthorizedException,
     );
   });

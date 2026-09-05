@@ -11,19 +11,19 @@ export class User extends BaseEntity {
     example: 'user@example.com',
     description: 'User email',
   })
-  email: string;
+  email!: string;
 
   @Column('text', {
     select: false,
   })
-  password: string;
+  password!: string;
 
   @Column('text')
   @ApiProperty({
     example: 'John Doe',
     description: 'User fullname',
   })
-  fullname: string;
+  fullname!: string;
 
   @Column('bool', {
     default: true,
@@ -32,7 +32,7 @@ export class User extends BaseEntity {
     example: true,
     description: 'User is active',
   })
-  isActive: boolean;
+  isActive!: boolean;
 
   @Column('text', {
     array: true,
@@ -42,15 +42,15 @@ export class User extends BaseEntity {
     example: ['user'],
     description: 'User roles',
   })
-  roles: string[];
+  roles!: string[];
 
   @BeforeInsert()
-  checkFieldsBeforeInsert() {
+  checkFieldsBeforeInsert(): void {
     this.email = this.email.toLowerCase().trim();
   }
 
   @BeforeUpdate()
-  checkFieldsBeforeUpdate() {
+  checkFieldsBeforeUpdate(): void {
     this.checkFieldsBeforeInsert();
   }
 }

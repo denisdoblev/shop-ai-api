@@ -11,7 +11,7 @@ export class CreateUserDto {
   @IsString()
   @IsEmail()
   @ApiProperty({ example: 'user@example.com', required: true })
-  email: string;
+  email!: string;
 
   @IsString()
   @MinLength(6)
@@ -21,10 +21,10 @@ export class CreateUserDto {
     message:
       'The password must have a Uppercase, lowercase letter and a number',
   })
-  password: string;
+  password!: string;
 
   @IsString()
   @MinLength(1)
   @ApiProperty({ example: 'John Doe', required: true })
-  fullname: string;
+  fullname!: string;
 }
