@@ -10,6 +10,8 @@ import { ProductImage } from './entities/product-image.entity';
 import { ProductSpecification } from './entities/product-specification.entity';
 import { ProductImagesController } from './product-images/product-images.controller';
 import { ProductImagesService } from './product-images/product-images.service';
+import { ProductSpecificationsController } from './product-specifications/product-specifications.controller';
+import { ProductSpecificationsService } from './product-specifications/product-specifications.service';
 
 @Module({
   imports: [
@@ -22,7 +24,15 @@ import { ProductImagesService } from './product-images/product-images.service';
       Attribute,
     ]),
   ],
-  controllers: [ProductsController, ProductImagesController],
-  providers: [ProductsService, ProductImagesService],
+  controllers: [
+    ProductsController,
+    ProductImagesController,
+    ProductSpecificationsController,
+  ],
+  providers: [
+    ProductsService,
+    ProductImagesService,
+    ProductSpecificationsService,
+  ],
 })
 export class ProductsModule {}
