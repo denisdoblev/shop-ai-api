@@ -9,6 +9,7 @@ import {
 } from './config';
 import { AuthModule } from './auth/auth.module';
 import { BrandsModule } from './brands/brands.module';
+import { CategoriesModule } from './categories/categories.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { BrandsModule } from './brands/brands.module';
     }),
     AuthModule,
     BrandsModule,
+    CategoriesModule,
   ],
   controllers: [],
   providers: [],
