@@ -60,13 +60,13 @@ describe('Auth decorator', () => {
       .spyOn(passport, 'AuthGuard')
       .mockReturnValue('AUTH_GUARD_MOCK' as unknown as AuthGuardReturn);
 
-    const result = Auth(ValidRoles.admin, ValidRoles.superUser);
+    const result = Auth(ValidRoles.ADMIN, ValidRoles.SUPER_USER);
 
     expect(roleProtected.RoleProtected).toHaveBeenCalledWith(
-      ValidRoles.admin,
-      ValidRoles.superUser,
+      ValidRoles.ADMIN,
+      ValidRoles.SUPER_USER,
     );
-    expect(passport.AuthGuard).toHaveBeenCalled();
+    expect(passport.AuthGuard).toHaveBeenCalledWith('jwt');
     expect(nestCommon.UseGuards).toHaveBeenCalledWith(
       'AUTH_GUARD_MOCK',
       UserRoleGuard,

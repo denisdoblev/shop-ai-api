@@ -27,11 +27,7 @@ type OwnerEntityTarget = EntityTarget<ObjectLiteral>;
 
 @Injectable()
 export class ResourceOwnerGuard implements CanActivate {
-  private readonly superAdminRoles = new Set([
-    'SUPER_ADMIN',
-    'super_admin',
-    ValidRoles.superUser,
-  ]);
+  private readonly superAdminRoles = new Set<string>([ValidRoles.SUPER_USER]);
 
   constructor(
     private readonly reflector: Reflector,
@@ -61,7 +57,7 @@ export class ResourceOwnerGuard implements CanActivate {
     }
     const normalizedRouteId = Array.isArray(routeId) ? routeId[0] : routeId;
 
-    const resourceId = this.parseRouteId(routeId);
+    const resourceId = Array.isArray(routeId) ? routeId[0] : routeId;
     const repository = this.dataSource.getRepository(entity);
     const relations = this.getRelationPaths(repository.metadata);
 
@@ -88,13 +84,6 @@ export class ResourceOwnerGuard implements CanActivate {
     }
 
     return true;
-  }
-
-  private parseRouteId(routeId: string | string[]): number | string {
-    const normalizedId = Array.isArray(routeId) ? routeId[0] : routeId;
-    const numericId = Number(normalizedId);
-
-    return Number.isNaN(numericId) ? normalizedId : numericId;
   }
 
   private getRelationPaths(metadata: EntityMetadata): string[] {
@@ -134,7 +123,7 @@ export class ResourceOwnerGuard implements CanActivate {
     data: unknown,
     depth = 0,
     visited = new WeakSet<object>(),
-  ): number | string | undefined {
+  ): string | undefined {
     if (!data || typeof data !== 'object') {
       return undefined;
     }
@@ -152,7 +141,7 @@ export class ResourceOwnerGuard implements CanActivate {
 
     const { userId, user } = dataAsObject;
 
-    if (typeof userId === 'number' || typeof userId === 'string') {
+    if (typeof userId === 'string') {
       return userId;
     }
 
@@ -160,7 +149,7 @@ export class ResourceOwnerGuard implements CanActivate {
       user &&
       typeof user === 'object' &&
       'id' in user &&
-      (typeof user.id === 'number' || typeof user.id === 'string')
+      typeof user.id === 'string'
     ) {
       return user.id;
     }

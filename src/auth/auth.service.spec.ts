@@ -1,21 +1,31 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
-
-jest.mock('../common/services/base.service', () => ({
-  BaseService: class {},
-}));
-
+import { JwtService } from '@nestjs/jwt';
+import { QueryFailedError, Repository } from 'typeorm';
 import { AuthService } from './auth.service';
 import { User } from './entities/user.entity';
-import { Repository } from 'typeorm';
 import { HashAdapter } from './interfaces/hash-adapter.interface';
-import { JwtService } from '@nestjs/jwt';
 
 describe('AuthService', () => {
+  const userId = '11111111-1111-4111-8111-111111111111';
   let service: AuthService;
   let mockRepository: jest.Mocked<Repository<User>>;
   let mockHashAdapter: jest.Mocked<HashAdapter>;
   let mockJwtService: jest.Mocked<JwtService>;
+
+  const buildUser = (overrides: Partial<User> = {}): User =>
+    ({
+      id: userId,
+      email: 'user@example.com',
+      password: 'hashed-pass',
+      fullname: 'Test User',
+      isActive: true,
+      roles: ['user'],
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      deletedAt: null,
+      ...overrides,
+    }) as User;
 
   beforeEach(() => {
     mockRepository = {
@@ -23,16 +33,10 @@ describe('AuthService', () => {
       create: jest.fn(),
       save: jest.fn(),
     } as unknown as jest.Mocked<Repository<User>>;
-
-    mockHashAdapter = {
-      hash: jest.fn(),
-      compare: jest.fn(),
-    } as unknown as jest.Mocked<HashAdapter>;
-
+    mockHashAdapter = { hash: jest.fn(), compare: jest.fn() };
     mockJwtService = {
       sign: jest.fn().mockReturnValue('signed-token'),
     } as unknown as jest.Mocked<JwtService>;
-
     service = new AuthService(mockRepository, mockHashAdapter, mockJwtService);
   });
 
@@ -40,92 +44,143 @@ describe('AuthService', () => {
 
   describe('create', () => {
     it('throws ConflictException when user already exists', async () => {
-      mockRepository.findOne.mockResolvedValue({
-        id: 1,
-        email: 'a@b.com',
-      } as unknown as User);
+      mockRepository.findOne.mockResolvedValue(buildUser());
 
       await expect(
-        service.create({ email: 'a@b.com', password: 'Abc123', fullname: 'X' }),
+        service.create({
+          email: ' User@Example.COM ',
+          password: 'Abc123',
+          fullname: 'Test User',
+        }),
       ).rejects.toBeInstanceOf(ConflictException);
+
+      expect(mockRepository.findOne).toHaveBeenCalledWith({
+        where: { email: 'user@example.com' },
+      });
     });
 
-    it('creates a user and returns token on success', async () => {
+    it('returns the safe profile and token on success', async () => {
+      const savedUser = buildUser();
       mockRepository.findOne.mockResolvedValue(null);
       mockHashAdapter.hash.mockResolvedValue('hashed-pass');
-
-      const savedUser = {
-        id: 10,
-        email: 'u@e.com',
-        fullname: 'Name',
-        password: 'hashed-pass',
-      } as unknown as User;
       mockRepository.create.mockReturnValue(savedUser);
       mockRepository.save.mockResolvedValue(savedUser);
 
-      const res = await service.create({
-        email: 'u@e.com',
+      const result = await service.create({
+        email: ' User@Example.COM ',
         password: 'Abc123',
-        fullname: 'Name',
+        fullname: savedUser.fullname,
       });
 
       expect(mockHashAdapter.hash).toHaveBeenCalledWith('Abc123');
-      expect(mockRepository.create).toHaveBeenCalled();
+      expect(mockRepository.create).toHaveBeenCalledWith({
+        email: 'user@example.com',
+        fullname: savedUser.fullname,
+        password: 'hashed-pass',
+      });
       expect(mockRepository.save).toHaveBeenCalledWith(savedUser);
-      expect(res).toMatchObject({ id: 10, email: 'u@e.com' });
-      expect(res.token).toBe('signed-token');
+      expect(result).toEqual({
+        id: userId,
+        email: savedUser.email,
+        fullname: savedUser.fullname,
+        isActive: true,
+        roles: ['user'],
+        token: 'signed-token',
+      });
+      expect(result).not.toHaveProperty('password');
+      expect(result).not.toHaveProperty('createdAt');
+    });
+
+    it('maps a concurrent unique email violation to ConflictException', async () => {
+      const user = buildUser();
+      mockRepository.findOne.mockResolvedValue(null);
+      mockHashAdapter.hash.mockResolvedValue('hashed-pass');
+      mockRepository.create.mockReturnValue(user);
+      mockRepository.save.mockRejectedValue(
+        new QueryFailedError(
+          'INSERT',
+          [],
+          Object.assign(new Error('duplicate key'), { code: '23505' }),
+        ),
+      );
+
+      await expect(
+        service.create({
+          email: user.email,
+          password: 'Abc123',
+          fullname: user.fullname,
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
     });
   });
 
   describe('login', () => {
-    it('throws UnauthorizedException when user not found', async () => {
+    it('throws UnauthorizedException when user is not found', async () => {
       mockRepository.findOne.mockResolvedValue(null);
 
       await expect(
-        service.login({ email: 'no@one.com', password: 'Abc123' }),
+        service.login({ email: 'missing@example.com', password: 'Abc123' }),
       ).rejects.toBeInstanceOf(UnauthorizedException);
     });
 
     it('throws UnauthorizedException when password does not match', async () => {
-      mockRepository.findOne.mockResolvedValue({
-        id: 2,
-        email: 'a@b.com',
-        password: 'hashed',
-      } as unknown as User);
+      mockRepository.findOne.mockResolvedValue(buildUser());
       mockHashAdapter.compare.mockResolvedValue(false);
 
       await expect(
-        service.login({ email: 'a@b.com', password: 'Wrong1' }),
+        service.login({ email: 'user@example.com', password: 'Wrong1' }),
       ).rejects.toBeInstanceOf(UnauthorizedException);
     });
 
-    it('returns user data and token on successful login', async () => {
-      const user = {
-        id: 3,
-        email: 'ok@ok.com',
-        password: 'hashed',
-      } as unknown as User;
-      mockRepository.findOne.mockResolvedValue(user as unknown as User);
+    it('returns the same safe profile contract on successful login', async () => {
+      const user = buildUser();
+      mockRepository.findOne.mockResolvedValue(user);
       mockHashAdapter.compare.mockResolvedValue(true);
 
-      const res = await service.login({
-        email: 'ok@ok.com',
+      const result = await service.login({
+        email: user.email,
         password: 'Abc123',
       });
 
-      expect(mockHashAdapter.compare).toHaveBeenCalledWith('Abc123', 'hashed');
-      expect(res).toMatchObject({ id: 3, email: 'ok@ok.com' });
-      expect(res.token).toBe('signed-token');
-      expect(Object.prototype.hasOwnProperty.call(res, 'password')).toBe(false);
+      expect(mockHashAdapter.compare).toHaveBeenCalledWith(
+        'Abc123',
+        'hashed-pass',
+      );
+      expect(result).toMatchObject({ id: userId, token: 'signed-token' });
+      expect(result).not.toHaveProperty('password');
+    });
+
+    it('normalizes the email before looking up the user', async () => {
+      const user = buildUser();
+      mockRepository.findOne.mockResolvedValue(user);
+      mockHashAdapter.compare.mockResolvedValue(true);
+
+      await service.login({
+        email: ' User@Example.COM ',
+        password: 'Abc123',
+      });
+
+      expect(mockRepository.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { email: 'user@example.com' } }),
+      );
+    });
+
+    it('throws UnauthorizedException without issuing a token when user is inactive', async () => {
+      mockRepository.findOne.mockResolvedValue(buildUser({ isActive: false }));
+      mockHashAdapter.compare.mockResolvedValue(true);
+
+      await expect(
+        service.login({ email: 'user@example.com', password: 'Abc123' }),
+      ).rejects.toThrow('User is inactive, talk with an admin');
+
+      expect(mockJwtService.sign).not.toHaveBeenCalled();
     });
   });
 
-  describe('checkAuthStatus', () => {
-    it('returns user with token', () => {
-      const user = { id: 5, email: 'x@y.com' } as User;
-      const res = service.checkAuthStatus(user);
-      expect(res).toMatchObject({ id: 5, email: 'x@y.com' });
-      expect(res.token).toBe('signed-token');
-    });
+  it('returns the same safe profile contract from checkAuthStatus', () => {
+    const result = service.checkAuthStatus(buildUser());
+
+    expect(result).toMatchObject({ id: userId, token: 'signed-token' });
+    expect(result).not.toHaveProperty('password');
   });
 });

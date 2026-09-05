@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ExecutionContext } from '@nestjs/common';
 import { UserRoleGuard } from './user-role.guard';
@@ -36,11 +36,11 @@ describe('UserRoleGuard', () => {
     expect(res).toBe(true);
   });
 
-  it('throws BadRequestException when user is not present on request', () => {
+  it('throws UnauthorizedException when user is not present on request', () => {
     (reflector.get as jest.Mock).mockReturnValue(['admin']);
 
     expect(() => guard.canActivate(buildContext({}))).toThrow(
-      BadRequestException,
+      UnauthorizedException,
     );
   });
 

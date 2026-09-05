@@ -3,7 +3,7 @@ import {
   CanActivate,
   ExecutionContext,
   Injectable,
-  BadRequestException,
+  UnauthorizedException,
   ForbiddenException,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
@@ -29,7 +29,7 @@ export class UserRoleGuard implements CanActivate {
     const req = context.switchToHttp().getRequest<Request & { user?: User }>();
     const user = req.user as User;
 
-    if (!user) throw new BadRequestException('User not found');
+    if (!user) throw new UnauthorizedException('User not found in request');
 
     for (const role of user.roles) {
       if (validRoles.includes(role)) {

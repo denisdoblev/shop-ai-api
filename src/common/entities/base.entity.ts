@@ -7,24 +7,27 @@ import {
 } from 'typeorm';
 
 export abstract class BaseEntity {
-  @PrimaryGeneratedColumn()
-  @ApiProperty({ example: 1, description: 'ID', uniqueItems: true })
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  @ApiProperty({
+    example: '3d6f0a36-40ed-4d30-ae15-7f12ab21379a',
+    description: 'ID',
+  })
+  id!: string;
 
   @ApiProperty({
     example: '2026-05-13T16:27:08.000Z',
     description: 'Created at',
   })
-  @CreateDateColumn({ type: 'timestamptz' }) // Cambiado a timestamptz para coincidir con tu DBML
-  createdAt: Date;
+  @CreateDateColumn({ type: 'timestamptz' })
+  createdAt!: Date;
 
   @ApiProperty({
     example: '2026-05-13T16:27:08.000Z',
     description: 'Updated at',
   })
   @UpdateDateColumn({ type: 'timestamptz' })
-  updatedAt: Date;
+  updatedAt!: Date;
 
-  @DeleteDateColumn()
-  deletedAt: Date;
+  @DeleteDateColumn({ type: 'timestamptz' })
+  deletedAt!: Date | null;
 }

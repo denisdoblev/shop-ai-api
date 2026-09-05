@@ -1,19 +1,19 @@
 import { Controller, Get, Post, Body } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { GetUser, Auth } from './decorators';
-import { CreateUserDto, LoginUserDto, LoginUserResponseDto } from './dto';
+import { AuthResponseDto, CreateUserDto, LoginUserDto } from './dto';
 import { User } from './entities/user.entity';
 import {
   ApiGetResponses,
   ApiPostResponses,
-} from 'src/common/decorators/api-responses.decorator';
+} from '../common/decorators/api-responses.decorator';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  @ApiPostResponses(User, {
+  @ApiPostResponses(AuthResponseDto, {
     description: 'User registered successfully',
     hasApiBearerToken: false,
   })
@@ -22,7 +22,7 @@ export class AuthController {
   }
 
   @Post('login')
-  @ApiPostResponses(LoginUserResponseDto, {
+  @ApiPostResponses(AuthResponseDto, {
     description: 'User logged in successfully',
     hasApiBearerToken: false,
   })
@@ -32,7 +32,7 @@ export class AuthController {
 
   @Get('check-status')
   @Auth()
-  @ApiGetResponses(User, {
+  @ApiGetResponses(AuthResponseDto, {
     description: 'Auth status checked successfully',
   })
   checkAuthStatus(@GetUser() user: User) {

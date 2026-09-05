@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { InternalServerErrorException } from '@nestjs/common';
+import { UnauthorizedException } from '@nestjs/common';
 import { ROUTE_ARGS_METADATA } from '@nestjs/common/constants';
 import { GetUser } from './get-user.decorator';
 
@@ -41,7 +41,7 @@ describe('GetUser decorator', () => {
   }
 
   it('returns the user object when no data is provided', () => {
-    const user = { id: 1, email: 'test@example.com' };
+    const user = { id: 'user-1', email: 'test@example.com' };
     const ctx: SimpleContext = {
       switchToHttp: () => ({ getRequest: () => ({ user }) }),
     };
@@ -53,7 +53,7 @@ describe('GetUser decorator', () => {
   });
 
   it('returns the requested property when data key is provided', () => {
-    const user = { id: 2, email: 'foo@bar.com' };
+    const user = { id: 'user-2', email: 'foo@bar.com' };
     const ctx: SimpleContext = {
       switchToHttp: () => ({ getRequest: () => ({ user }) }),
     };
@@ -64,13 +64,13 @@ describe('GetUser decorator', () => {
     expect(result).toBe('foo@bar.com');
   });
 
-  it('throws InternalServerErrorException when request has no user', () => {
+  it('throws UnauthorizedException when request has no user', () => {
     const ctx: SimpleContext = {
       switchToHttp: () => ({ getRequest: () => ({}) }),
     };
 
     const factory = getFactoryForData(undefined);
-    expect(() => factory(undefined, ctx)).toThrow(InternalServerErrorException);
-    expect(() => factory(undefined, ctx)).toThrow('User not found (request)');
+    expect(() => factory(undefined, ctx)).toThrow(UnauthorizedException);
+    expect(() => factory(undefined, ctx)).toThrow('User not found in request');
   });
 });

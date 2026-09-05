@@ -5,18 +5,18 @@ import { ValidRoles } from '../interfaces';
 
 describe('RoleProtected decorator', () => {
   it('sets metadata on a class', () => {
-    @RoleProtected(ValidRoles.admin, ValidRoles.user)
+    @RoleProtected(ValidRoles.ADMIN, ValidRoles.USER)
     class TestClass {}
 
     const reflector = new Reflector();
     const roles = reflector.get<string[]>(META_ROLES, TestClass);
 
-    expect(roles).toEqual([ValidRoles.admin, ValidRoles.user]);
+    expect(roles).toEqual([ValidRoles.ADMIN, ValidRoles.USER]);
   });
 
   it('sets metadata on a method', () => {
     class TestClass {
-      @RoleProtected(ValidRoles.superUser)
+      @RoleProtected(ValidRoles.SUPER_USER)
       someMethod() {}
     }
 
@@ -30,6 +30,6 @@ describe('RoleProtected decorator', () => {
 
     const roles = reflector.get<string[]>(META_ROLES, handler);
 
-    expect(roles).toEqual([ValidRoles.superUser]);
+    expect(roles).toEqual([ValidRoles.SUPER_USER]);
   });
 });
