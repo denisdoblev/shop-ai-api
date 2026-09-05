@@ -6,19 +6,23 @@ import { Category } from '../categories/entities/category.entity';
 import { ProductsController } from './products.controller';
 import { ProductsService } from './products.service';
 import { Product } from './entities/product.entity';
+import { ProductImage } from './entities/product-image.entity';
 import { ProductSpecification } from './entities/product-specification.entity';
+import { ProductImagesController } from './product-images/product-images.controller';
+import { ProductImagesService } from './product-images/product-images.service';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       Product,
+      ProductImage,
       ProductSpecification,
       Brand,
       Category,
       Attribute,
     ]),
   ],
-  controllers: [ProductsController],
-  providers: [ProductsService],
+  controllers: [ProductsController, ProductImagesController],
+  providers: [ProductsService, ProductImagesService],
 })
 export class ProductsModule {}
