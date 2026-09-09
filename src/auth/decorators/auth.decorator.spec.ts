@@ -21,8 +21,23 @@ jest.mock('@nestjs/passport', () => {
   return mock;
 });
 
+jest.mock('@nestjs/swagger', () => {
+  const actualSwagger = jest.requireActual(
+    '@nestjs/swagger',
+  ) as unknown as typeof import('@nestjs/swagger');
+  const mock = { ...actualSwagger } as typeof actualSwagger;
+  (mock.ApiBearerAuth as unknown) =
+    jest.fn() as unknown as typeof actualSwagger.ApiBearerAuth;
+  (mock.ApiUnauthorizedResponse as unknown) =
+    jest.fn() as unknown as typeof actualSwagger.ApiUnauthorizedResponse;
+  (mock.ApiForbiddenResponse as unknown) =
+    jest.fn() as unknown as typeof actualSwagger.ApiForbiddenResponse;
+  return mock;
+});
+
 import * as nestCommon from '@nestjs/common';
 import * as passport from '@nestjs/passport';
+import * as swagger from '@nestjs/swagger';
 import * as roleProtected from './role-protected.decorator';
 import { Auth } from './auth.decorator';
 import { UserRoleGuard } from '../guards/user-role.guard';
@@ -32,13 +47,20 @@ type RoleProtectedType = ReturnType<typeof roleProtected.RoleProtected>;
 type ApplyDecoratorsReturn = ReturnType<typeof nestCommon.applyDecorators>;
 type UseGuardsReturn = ReturnType<typeof nestCommon.UseGuards>;
 type AuthGuardReturn = ReturnType<typeof passport.AuthGuard>;
+type ApiBearerAuthReturn = ReturnType<typeof swagger.ApiBearerAuth>;
+type ApiUnauthorizedResponseReturn = ReturnType<
+  typeof swagger.ApiUnauthorizedResponse
+>;
+type ApiForbiddenResponseReturn = ReturnType<
+  typeof swagger.ApiForbiddenResponse
+>;
 
 describe('Auth decorator', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('applies RoleProtected and UseGuards with AuthGuard and UserRoleGuard', () => {
+  it('applies role guards and protected OpenAPI metadata', () => {
     jest
       .spyOn(roleProtected, 'RoleProtected')
       .mockReturnValue('ROLE_PROTECTED_MOCK' as unknown as RoleProtectedType);
@@ -60,12 +82,23 @@ describe('Auth decorator', () => {
       .spyOn(passport, 'AuthGuard')
       .mockReturnValue('AUTH_GUARD_MOCK' as unknown as AuthGuardReturn);
 
-    const result = Auth(ValidRoles.ADMIN, ValidRoles.SUPER_USER);
+    jest
+      .spyOn(swagger, 'ApiBearerAuth')
+      .mockReturnValue('BEARER_MOCK' as unknown as ApiBearerAuthReturn);
+    jest
+      .spyOn(swagger, 'ApiUnauthorizedResponse')
+      .mockReturnValue(
+        'UNAUTHORIZED_MOCK' as unknown as ApiUnauthorizedResponseReturn,
+      );
+    jest
+      .spyOn(swagger, 'ApiForbiddenResponse')
+      .mockReturnValue(
+        'FORBIDDEN_MOCK' as unknown as ApiForbiddenResponseReturn,
+      );
 
-    expect(roleProtected.RoleProtected).toHaveBeenCalledWith(
-      ValidRoles.ADMIN,
-      ValidRoles.SUPER_USER,
-    );
+    const result = Auth(ValidRoles.ADMIN);
+
+    expect(roleProtected.RoleProtected).toHaveBeenCalledWith(ValidRoles.ADMIN);
     expect(passport.AuthGuard).toHaveBeenCalledWith('jwt');
     expect(nestCommon.UseGuards).toHaveBeenCalledWith(
       'AUTH_GUARD_MOCK',
@@ -74,11 +107,53 @@ describe('Auth decorator', () => {
     expect(nestCommon.applyDecorators).toHaveBeenCalledWith(
       'ROLE_PROTECTED_MOCK',
       ['USE_GUARDS', 'AUTH_GUARD_MOCK', UserRoleGuard],
+      'BEARER_MOCK',
+      'UNAUTHORIZED_MOCK',
+      'FORBIDDEN_MOCK',
     );
 
     expect(result).toEqual([
       'ROLE_PROTECTED_MOCK',
       ['USE_GUARDS', 'AUTH_GUARD_MOCK', UserRoleGuard],
+      'BEARER_MOCK',
+      'UNAUTHORIZED_MOCK',
+      'FORBIDDEN_MOCK',
     ]);
+  });
+
+  it('does not document 403 when no role is required', () => {
+    jest
+      .spyOn(roleProtected, 'RoleProtected')
+      .mockReturnValue('ROLE_PROTECTED_MOCK' as unknown as RoleProtectedType);
+    jest
+      .spyOn(nestCommon, 'applyDecorators')
+      .mockImplementation(
+        (...args: unknown[]) => args as unknown as ApplyDecoratorsReturn,
+      );
+    jest
+      .spyOn(nestCommon, 'UseGuards')
+      .mockReturnValue('USE_GUARDS_MOCK' as unknown as UseGuardsReturn);
+    jest
+      .spyOn(passport, 'AuthGuard')
+      .mockReturnValue('AUTH_GUARD_MOCK' as unknown as AuthGuardReturn);
+    jest
+      .spyOn(swagger, 'ApiBearerAuth')
+      .mockReturnValue('BEARER_MOCK' as unknown as ApiBearerAuthReturn);
+    jest
+      .spyOn(swagger, 'ApiUnauthorizedResponse')
+      .mockReturnValue(
+        'UNAUTHORIZED_MOCK' as unknown as ApiUnauthorizedResponseReturn,
+      );
+    const forbiddenSpy = jest.spyOn(swagger, 'ApiForbiddenResponse');
+
+    Auth();
+
+    expect(forbiddenSpy).not.toHaveBeenCalled();
+    expect(nestCommon.applyDecorators).toHaveBeenCalledWith(
+      'ROLE_PROTECTED_MOCK',
+      'USE_GUARDS_MOCK',
+      'BEARER_MOCK',
+      'UNAUTHORIZED_MOCK',
+    );
   });
 });

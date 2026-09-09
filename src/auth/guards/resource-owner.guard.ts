@@ -17,7 +17,6 @@ import {
 } from 'typeorm';
 import { CHECK_OWNER_KEY } from '../decorators/check-owner.decorator';
 import { User } from '../entities/user.entity';
-import { ValidRoles } from '../interfaces';
 
 type AuthenticatedRequest = Request & {
   user?: User;
@@ -27,8 +26,6 @@ type OwnerEntityTarget = EntityTarget<ObjectLiteral>;
 
 @Injectable()
 export class ResourceOwnerGuard implements CanActivate {
-  private readonly superAdminRoles = new Set<string>([ValidRoles.SUPER_USER]);
-
   constructor(
     private readonly reflector: Reflector,
     private readonly dataSource: DataSource,
@@ -45,10 +42,6 @@ export class ResourceOwnerGuard implements CanActivate {
     const user = req.user;
     if (!user) {
       throw new UnauthorizedException('User not found in request');
-    }
-
-    if (user.roles.some((role) => this.superAdminRoles.has(role))) {
-      return true;
     }
 
     const routeId = req.params?.id;

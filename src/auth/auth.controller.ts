@@ -34,6 +34,7 @@ export class AuthController {
   @Auth()
   @ApiGetResponses(AuthResponseDto, {
     description: 'Auth status checked successfully',
+    hasApiBearerToken: false,
   })
   checkAuthStatus(@GetUser() user: User) {
     return this.authService.checkAuthStatus(user);

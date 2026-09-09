@@ -1,5 +1,10 @@
 import { applyDecorators, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import {
+  ApiBearerAuth,
+  ApiForbiddenResponse,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 import { UserRoleGuard } from '../guards/user-role.guard';
 import { ValidRoles } from '../interfaces';
 import { RoleProtected } from './role-protected.decorator';
@@ -8,5 +13,10 @@ export function Auth(...roles: ValidRoles[]) {
   return applyDecorators(
     RoleProtected(...roles),
     UseGuards(AuthGuard('jwt'), UserRoleGuard),
+    ApiBearerAuth(),
+    ApiUnauthorizedResponse({ description: 'Authentication required' }),
+    ...(roles.length > 0
+      ? [ApiForbiddenResponse({ description: 'Insufficient role' })]
+      : []),
   );
 }

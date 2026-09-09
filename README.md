@@ -72,9 +72,35 @@ Registration and login return HTTP 201. All three routes return the same safe au
 
 Passwords and persistence timestamps are not included in authentication responses.
 
+Catalog reads are public. Catalog creation, update, and deletion require a valid
+JWT for a user with the `admin` role. See the repository-audited
+[`authentication and authorization plan`](docs/authentication-authorization-plan.md)
+for the access matrix, ownership approach, and design decisions.
+
+### Role administration
+
+There is intentionally no role-management API, seed, or application script yet.
+Promote an already registered user through a controlled database operation,
+targeting its UUID rather than mutable profile data:
+
+```sql
+BEGIN;
+SELECT id, email, roles FROM users WHERE id = '<user-uuid>' FOR UPDATE;
+UPDATE users
+SET roles = ARRAY['user', 'admin']::text[], updated_at = now()
+WHERE id = '<user-uuid>' AND deleted_at IS NULL
+RETURNING id, email, roles;
+COMMIT;
+```
+
+Before deploying this strict two-role policy to an existing environment, replace
+any legacy `super-user` role with `admin`. Direct database changes bypass
+application validation and must be reviewed, access-controlled, and verified.
+
 ## Brands API
 
-The first catalog domain exposes these public endpoints:
+The brands domain exposes these endpoints; GET operations are public and
+mutations require `admin`:
 
 - `POST /api/brands`
 - `GET /api/brands?limit=10&offset=0`
@@ -182,6 +208,7 @@ pnpm run build
 | `src/db/`                  | TypeORM datasource, migrations, and standalone seeds                  |
 | `test/`                    | End-to-end tests and shared test bootstrap                            |
 | `docs/conventions.md`      | Engineering conventions and implementation recipes                    |
+| `docs/authentication-authorization-plan.md` | Security diagnosis, access matrix, and implementation record |
 | `docs/database-schema.md`  | Catalog schema documentation and reference SQL                        |
 | `docs/database-seeding.md` | Seed architecture and operational guide                               |
 

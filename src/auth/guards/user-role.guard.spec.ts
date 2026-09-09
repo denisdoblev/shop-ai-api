@@ -2,34 +2,47 @@ import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ExecutionContext } from '@nestjs/common';
 import { UserRoleGuard } from './user-role.guard';
+import { META_ROLES } from '../decorators/role-protected.decorator';
 import { User } from '../entities/user.entity';
+import { ValidRoles } from '../interfaces';
 
 describe('UserRoleGuard', () => {
   let guard: UserRoleGuard;
   let reflector: Reflector;
+  let getAllAndOverride: jest.Mock;
 
   beforeEach(() => {
-    reflector = { get: jest.fn() } as unknown as Reflector;
+    getAllAndOverride = jest.fn();
+    reflector = { getAllAndOverride } as unknown as Reflector;
     guard = new UserRoleGuard(reflector);
   });
 
   // helper to build a minimal ExecutionContext inline in tests when needed
-  const buildContext = (req: unknown, handler = () => ({})) =>
-    ({
+  const buildContext = (req: unknown, handler = () => ({})) => {
+    class TestController {}
+
+    return {
       getHandler: () => handler,
+      getClass: () => TestController,
       switchToHttp: () => ({ getRequest: () => req }),
-    }) as unknown as ExecutionContext;
+    } as unknown as ExecutionContext;
+  };
 
   it('returns true when no roles metadata is set', () => {
-    (reflector.get as jest.Mock).mockReturnValue(undefined);
+    getAllAndOverride.mockReturnValue(undefined);
 
-    const res = guard.canActivate(buildContext({}));
+    const context = buildContext({});
+    const res = guard.canActivate(context);
 
     expect(res).toBe(true);
+    expect(getAllAndOverride).toHaveBeenCalledWith(META_ROLES, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
   });
 
   it('returns true when roles metadata is an empty array', () => {
-    (reflector.get as jest.Mock).mockReturnValue([]);
+    getAllAndOverride.mockReturnValue([]);
 
     const res = guard.canActivate(buildContext({}));
 
@@ -37,7 +50,7 @@ describe('UserRoleGuard', () => {
   });
 
   it('throws UnauthorizedException when user is not present on request', () => {
-    (reflector.get as jest.Mock).mockReturnValue(['admin']);
+    getAllAndOverride.mockReturnValue([ValidRoles.ADMIN]);
 
     expect(() => guard.canActivate(buildContext({}))).toThrow(
       UnauthorizedException,
@@ -45,11 +58,11 @@ describe('UserRoleGuard', () => {
   });
 
   it('returns true when user has at least one valid role', () => {
-    (reflector.get as jest.Mock).mockReturnValue(['admin', 'superuser']);
+    getAllAndOverride.mockReturnValue([ValidRoles.ADMIN]);
 
     const user = new User();
     user.fullname = 'Jane Doe';
-    user.roles = ['user', 'admin'];
+    user.roles = [ValidRoles.USER, ValidRoles.ADMIN];
 
     const res = guard.canActivate(buildContext({ user }));
 
@@ -57,12 +70,12 @@ describe('UserRoleGuard', () => {
   });
 
   it('throws ForbiddenException when user does not have required role', () => {
-    const validRoles = ['admin'];
-    (reflector.get as jest.Mock).mockReturnValue(validRoles);
+    const validRoles = [ValidRoles.ADMIN];
+    getAllAndOverride.mockReturnValue(validRoles);
 
     const user = new User();
     user.fullname = 'John Smith';
-    user.roles = ['user'];
+    user.roles = [ValidRoles.USER];
 
     // Capture the thrown exception to inspect its message
     try {

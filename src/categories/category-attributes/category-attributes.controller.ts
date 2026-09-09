@@ -21,6 +21,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CategoryAttributesService } from './category-attributes.service';
+import { Auth } from '../../auth/decorators';
+import { ValidRoles } from '../../auth/interfaces';
 import {
   CategoryAttributeResponseDto,
   CreateCategoryAttributeDto,
@@ -46,6 +48,7 @@ export class CategoryAttributesController {
   }
 
   @Post()
+  @Auth(ValidRoles.ADMIN)
   @ApiOperation({ summary: 'Add a suggested attribute to a category' })
   @ApiParam({ name: 'categoryId', type: String, format: 'uuid' })
   @ApiCreatedResponse({ type: CategoryAttributeResponseDto })
@@ -63,6 +66,7 @@ export class CategoryAttributesController {
   }
 
   @Delete(':attributeId')
+  @Auth(ValidRoles.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Remove a suggested attribute from a category' })
   @ApiParam({ name: 'categoryId', type: String, format: 'uuid' })

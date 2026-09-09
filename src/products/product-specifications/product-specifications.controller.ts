@@ -27,6 +27,8 @@ import {
   ProductSpecificationResponseDto,
   UpdateProductSpecificationDto,
 } from './dto';
+import { Auth } from '../../auth/decorators';
+import { ValidRoles } from '../../auth/interfaces';
 
 @ApiTags('products')
 @Controller('products/:productId/specifications')
@@ -45,6 +47,7 @@ export class ProductSpecificationsController {
     return this.productSpecificationsService.findAll(productId);
   }
   @Post()
+  @Auth(ValidRoles.ADMIN)
   @ApiOperation({ summary: 'Add a typed product specification' })
   @ApiParam({ name: 'productId', type: String, format: 'uuid' })
   @ApiCreatedResponse({ type: ProductSpecificationResponseDto })
@@ -62,6 +65,7 @@ export class ProductSpecificationsController {
     return this.productSpecificationsService.create(productId, dto);
   }
   @Patch(':attributeId')
+  @Auth(ValidRoles.ADMIN)
   @ApiOperation({ summary: 'Update a typed product specification' })
   @ApiParam({ name: 'productId', type: String, format: 'uuid' })
   @ApiParam({ name: 'attributeId', type: String, format: 'uuid' })
@@ -84,6 +88,7 @@ export class ProductSpecificationsController {
     );
   }
   @Delete(':attributeId')
+  @Auth(ValidRoles.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Soft-delete a product specification' })
   @ApiParam({ name: 'productId', type: String, format: 'uuid' })

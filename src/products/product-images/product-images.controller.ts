@@ -18,6 +18,8 @@ import {
 } from '@nestjs/swagger';
 import { ProductImagesService } from './product-images.service';
 import { CreateProductImageDto, ProductImageResponseDto } from './dto';
+import { Auth } from '../../auth/decorators';
+import { ValidRoles } from '../../auth/interfaces';
 
 @ApiTags('products')
 @Controller('products/:productId/images')
@@ -37,6 +39,7 @@ export class ProductImagesController {
   }
 
   @Post()
+  @Auth(ValidRoles.ADMIN)
   @ApiOperation({ summary: 'Add an image to a product' })
   @ApiParam({ name: 'productId', type: String, format: 'uuid' })
   @ApiCreatedResponse({ type: ProductImageResponseDto })

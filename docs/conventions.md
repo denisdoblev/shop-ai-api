@@ -26,7 +26,9 @@ This document is the source of truth for conventions established by the reposito
 - **Explicit:** Decorator-populated entity and DTO fields use definite assignment (`!`). Truly optional input uses `?`; nullable persistence state uses a union such as `Date | null`.
 - **Strong inferred:** Injected/stable dependencies are `private readonly`. Async I/O uses `async`/`await` and public boundary return types are explicit.
 - **Explicit:** Project imports are relative. Barrels may be used within a local feature; no path alias is configured.
-- **Explicit:** String enum member names are UPPER_SNAKE_CASE while serialized values retain their API/database spelling (`ValidRoles.SUPER_USER = 'super-user'`).
+- **Explicit:** String enum member names are UPPER_SNAKE_CASE while serialized
+  values retain their API/database spelling (`ValidRoles.ADMIN = 'admin'`). The
+  supported role set is `USER` and `ADMIN`.
 
 ## 4. NestJS Conventions
 
@@ -124,9 +126,14 @@ This document is the source of truth for conventions established by the reposito
 ## 13. Inconsistencies / Decisions Needed
 
 - `ResourceOwnerGuard` is implemented but no current route uses it; ownership relationship conventions remain unproven.
-- `PaginationDto` is established and tested but no current endpoint consumes it, so pagination response metadata remains undecided.
+- `PaginationDto` is established, tested, and consumed by the brand, category,
+  attribute, and product listings. Pagination response metadata remains
+  undecided because those endpoints return arrays without totals or an envelope.
 - Catalog entities establish relationship, transaction, filter, and internal sort
   patterns. A public sorting contract remains undecided.
+- Catalog GET routes are public. Catalog mutations use
+  `@Auth(ValidRoles.ADMIN)`; missing/invalid authentication returns 401 and an
+  authenticated user without `ADMIN` receives 403.
 
 ## 14. Agent Checklist
 

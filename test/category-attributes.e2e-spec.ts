@@ -1,10 +1,18 @@
 import { INestApplication } from '@nestjs/common';
-import request from 'supertest';
+import supertest from 'supertest';
 import { App } from 'supertest/types';
-import { clearDatabase, closeTestApp, initTestApp } from './test-utils';
+import {
+  clearDatabase,
+  closeTestApp,
+  createAdminToken,
+  initTestApp,
+} from './test-utils';
 
 describe('Category attributes (e2e)', () => {
   let app: INestApplication;
+  let adminToken: string;
+  const request = (target: App) =>
+    supertest.agent(target).auth(adminToken, { type: 'bearer' });
 
   beforeAll(async () => {
     app = await initTestApp();
@@ -16,6 +24,7 @@ describe('Category attributes (e2e)', () => {
 
   beforeEach(async () => {
     await clearDatabase();
+    adminToken = await createAdminToken(app);
   });
 
   it('manages a category attribute template with soft delete', async () => {

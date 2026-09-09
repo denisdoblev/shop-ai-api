@@ -10,6 +10,7 @@ import { Observable } from 'rxjs';
 import { User } from '../entities/user.entity';
 import { Request } from 'express';
 import { META_ROLES } from '../decorators/role-protected.decorator';
+import { ValidRoles } from '../interfaces';
 
 @Injectable()
 export class UserRoleGuard implements CanActivate {
@@ -18,16 +19,16 @@ export class UserRoleGuard implements CanActivate {
   canActivate(
     context: ExecutionContext,
   ): boolean | Promise<boolean> | Observable<boolean> {
-    const validRoles: string[] = this.reflector.get(
+    const validRoles = this.reflector.getAllAndOverride<ValidRoles[]>(
       META_ROLES,
-      context.getHandler(),
+      [context.getHandler(), context.getClass()],
     );
 
     if (!validRoles) return true;
     if (validRoles.length === 0) return true;
 
     const req = context.switchToHttp().getRequest<Request & { user?: User }>();
-    const user = req.user as User;
+    const user = req.user;
 
     if (!user) throw new UnauthorizedException('User not found in request');
 

@@ -18,6 +18,8 @@ import {
 } from '@nestjs/swagger';
 import { CreateProductPriceDto, ProductPriceResponseDto } from './dto';
 import { ProductPricesService } from './product-prices.service';
+import { Auth } from '../../auth/decorators';
+import { ValidRoles } from '../../auth/interfaces';
 
 @ApiTags('products')
 @Controller('products/:productId/prices')
@@ -37,6 +39,7 @@ export class ProductPricesController {
   }
 
   @Post()
+  @Auth(ValidRoles.ADMIN)
   @ApiOperation({ summary: 'Record a new product price' })
   @ApiParam({ name: 'productId', type: String, format: 'uuid' })
   @ApiCreatedResponse({ type: ProductPriceResponseDto })

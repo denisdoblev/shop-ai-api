@@ -23,6 +23,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
+import { Auth } from '../auth/decorators';
+import { ValidRoles } from '../auth/interfaces';
 import {
   CreateProductDto,
   ProductQueryDto,
@@ -36,6 +38,7 @@ export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Post()
+  @Auth(ValidRoles.ADMIN)
   @ApiOperation({ summary: 'Create a product' })
   @ApiCreatedResponse({ type: ProductResponseDto })
   @ApiBadRequestResponse({ description: 'Invalid request body' })
@@ -68,6 +71,7 @@ export class ProductsController {
   }
 
   @Patch(':id')
+  @Auth(ValidRoles.ADMIN)
   @ApiOperation({ summary: 'Update an active product' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @ApiOkResponse({ type: ProductResponseDto })
@@ -82,6 +86,7 @@ export class ProductsController {
   }
 
   @Delete(':id')
+  @Auth(ValidRoles.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Soft-delete an active product' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })

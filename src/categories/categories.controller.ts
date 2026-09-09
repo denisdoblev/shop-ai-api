@@ -23,6 +23,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { PaginationDto } from '../common/dto';
+import { Auth } from '../auth/decorators';
+import { ValidRoles } from '../auth/interfaces';
 import { CategoriesService } from './categories.service';
 import {
   CategoryResponseDto,
@@ -36,6 +38,7 @@ export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
   @Post()
+  @Auth(ValidRoles.ADMIN)
   @ApiOperation({ summary: 'Create a category' })
   @ApiCreatedResponse({ type: CategoryResponseDto })
   @ApiBadRequestResponse({ description: 'Invalid request body' })
@@ -73,6 +76,7 @@ export class CategoriesController {
   }
 
   @Patch(':id')
+  @Auth(ValidRoles.ADMIN)
   @ApiOperation({ summary: 'Update an active category' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @ApiOkResponse({ type: CategoryResponseDto })
@@ -87,6 +91,7 @@ export class CategoriesController {
   }
 
   @Delete(':id')
+  @Auth(ValidRoles.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Soft-delete an active category' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })

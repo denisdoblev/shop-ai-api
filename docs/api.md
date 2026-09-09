@@ -4,10 +4,22 @@ All routes are served below `/api`; the exhaustive OpenAPI contract is available
 at `/api/docs`. Responses are plain JSON objects without an envelope. Validation
 rejects unknown properties.
 
+## Security
+
+Catalog reads are public. Every catalog mutation requires a bearer JWT belonging
+to an active user with the `admin` role. Missing or invalid authentication
+returns 401; an authenticated non-admin user receives 403. Registration and
+login remain public, while `GET /api/auth/check-status` requires authentication
+without an administrative role.
+
+The endpoint-by-endpoint access matrix, ownership decisions, and implementation
+record are in
+[`authentication-authorization-plan.md`](authentication-authorization-plan.md).
+
 ## Brands
 
-Brands are currently public resources. Creation accepts an explicit `slug`; the
-API does not derive it from `name`.
+Brand reads are public and brand mutations require `admin`. Creation accepts an
+explicit `slug`; the API does not derive it from `name`.
 
 | Method   | Route                       | Success | Purpose                          |
 | -------- | --------------------------- | ------: | -------------------------------- |

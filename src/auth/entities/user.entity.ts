@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { BeforeInsert, BeforeUpdate, Column, Entity } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
+import { ValidRoles } from '../interfaces';
 
 @Entity('users')
 export class User extends BaseEntity {
@@ -36,13 +37,15 @@ export class User extends BaseEntity {
 
   @Column('text', {
     array: true,
-    default: ['user'],
+    default: [ValidRoles.USER],
   })
   @ApiProperty({
-    example: ['user'],
+    enum: ValidRoles,
+    isArray: true,
+    example: [ValidRoles.USER],
     description: 'User roles',
   })
-  roles!: string[];
+  roles!: ValidRoles[];
 
   @BeforeInsert()
   checkFieldsBeforeInsert(): void {

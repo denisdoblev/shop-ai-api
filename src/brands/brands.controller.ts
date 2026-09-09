@@ -23,6 +23,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { PaginationDto } from '../common/dto';
+import { Auth } from '../auth/decorators';
+import { ValidRoles } from '../auth/interfaces';
 import { BrandsService } from './brands.service';
 import { BrandResponseDto, CreateBrandDto, UpdateBrandDto } from './dto';
 
@@ -32,6 +34,7 @@ export class BrandsController {
   constructor(private readonly brandsService: BrandsService) {}
 
   @Post()
+  @Auth(ValidRoles.ADMIN)
   @ApiOperation({ summary: 'Create a brand' })
   @ApiCreatedResponse({ type: BrandResponseDto })
   @ApiBadRequestResponse({ description: 'Invalid request body' })
@@ -64,6 +67,7 @@ export class BrandsController {
   }
 
   @Patch(':id')
+  @Auth(ValidRoles.ADMIN)
   @ApiOperation({ summary: 'Update an active brand' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @ApiOkResponse({ type: BrandResponseDto })
@@ -78,6 +82,7 @@ export class BrandsController {
   }
 
   @Delete(':id')
+  @Auth(ValidRoles.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Soft-delete an active brand' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })

@@ -8,11 +8,12 @@ import { AuthController } from './auth.controller';
 import { User } from './entities/user.entity';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { BcryptAdapter } from './adapters/bcrypt.adapter';
+import { UserRoleGuard } from './guards/user-role.guard';
 
 @Global()
 @Module({
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, BcryptAdapter],
+  providers: [AuthService, JwtStrategy, BcryptAdapter, UserRoleGuard],
   imports: [
     ConfigModule,
     TypeOrmModule.forFeature([User]),
@@ -30,6 +31,12 @@ import { BcryptAdapter } from './adapters/bcrypt.adapter';
       },
     }),
   ],
-  exports: [TypeOrmModule, JwtStrategy, PassportModule, JwtModule],
+  exports: [
+    TypeOrmModule,
+    JwtStrategy,
+    PassportModule,
+    JwtModule,
+    UserRoleGuard,
+  ],
 })
 export class AuthModule {}

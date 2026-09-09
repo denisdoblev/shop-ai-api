@@ -10,7 +10,7 @@ boolean, numeric, and string filter indexes.
 
 ## Scope
 
-The schema defines the following tables:
+The catalog reference SQL defines the following tables:
 
 - `brands`
 - `categories`, including a self-referencing category hierarchy
@@ -20,6 +20,16 @@ The schema defines the following tables:
 - `product_images`
 - `product_specifications`, using typed EAV values
 - `product_prices`, retaining price history
+
+Authentication is outside that reference SQL's catalog scope. The application
+nevertheless has an implemented `users` table created by
+`1756425600000-CreateUsersTable.ts`, with UUID/audit fields, unique email,
+password hash, active status, and a `text[]` roles column defaulting to `user`.
+The roles array currently has no database check constraint. Application code
+accepts only `user` and `admin`; any legacy `super-user` database value must be
+replaced with `admin`. Role promotion is initially performed directly in the
+database. The deferred decision about constraining persisted values is documented in
+[`authentication-authorization-plan.md`](authentication-authorization-plan.md).
 
 Soft-deleted records are excluded from partial unique and query indexes. Foreign keys use `ON DELETE RESTRICT`, so related records must be handled explicitly before deleting their parent.
 

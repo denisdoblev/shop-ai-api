@@ -16,7 +16,7 @@ describe('RoleProtected decorator', () => {
 
   it('sets metadata on a method', () => {
     class TestClass {
-      @RoleProtected(ValidRoles.SUPER_USER)
+      @RoleProtected(ValidRoles.ADMIN)
       someMethod() {}
     }
 
@@ -30,6 +30,6 @@ describe('RoleProtected decorator', () => {
 
     const roles = reflector.get<string[]>(META_ROLES, handler);
 
-    expect(roles).toEqual([ValidRoles.SUPER_USER]);
+    expect(roles).toEqual([ValidRoles.ADMIN]);
   });
 });

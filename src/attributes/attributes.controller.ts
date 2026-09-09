@@ -23,6 +23,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { PaginationDto } from '../common/dto';
+import { Auth } from '../auth/decorators';
+import { ValidRoles } from '../auth/interfaces';
 import { AttributesService } from './attributes.service';
 import {
   AttributeResponseDto,
@@ -36,6 +38,7 @@ export class AttributesController {
   constructor(private readonly attributesService: AttributesService) {}
 
   @Post()
+  @Auth(ValidRoles.ADMIN)
   @ApiOperation({ summary: 'Create an attribute' })
   @ApiCreatedResponse({ type: AttributeResponseDto })
   @ApiBadRequestResponse({ description: 'Invalid request body' })
@@ -74,6 +77,7 @@ export class AttributesController {
   }
 
   @Patch(':id')
+  @Auth(ValidRoles.ADMIN)
   @ApiOperation({ summary: 'Update an active attribute' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @ApiOkResponse({ type: AttributeResponseDto })
@@ -91,6 +95,7 @@ export class AttributesController {
   }
 
   @Delete(':id')
+  @Auth(ValidRoles.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Soft-delete an active attribute' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })

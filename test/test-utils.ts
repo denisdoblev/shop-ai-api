@@ -1,6 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module';
+import { User } from '../src/auth/entities/user.entity';
+import { ValidRoles } from '../src/auth/interfaces';
 import dataSource from '../src/db/data-source';
 import { configureApplication } from '../src/config';
 import { clearTestDatabase } from '../src/config/e2e-database.config';
@@ -52,4 +56,19 @@ export async function clearDatabase(): Promise<void> {
     dataSource,
     `TRUNCATE TABLE ${TABLES_TO_CLEAR} RESTART IDENTITY CASCADE;`,
   );
+}
+
+export async function createAdminToken(app: INestApplication): Promise<string> {
+  const userRepository = app.get(DataSource).getRepository(User);
+  const admin = userRepository.create({
+    email: 'catalog-admin@example.com',
+    password: 'test-only-unused-password-hash',
+    fullname: 'Catalog Admin',
+    isActive: true,
+    roles: [ValidRoles.ADMIN],
+  });
+
+  await userRepository.save(admin);
+
+  return app.get(JwtService).sign({ id: admin.id });
 }

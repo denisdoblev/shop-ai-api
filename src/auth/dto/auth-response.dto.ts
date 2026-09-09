@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { ValidRoles } from '../interfaces';
 
 export class AuthResponseDto {
   @ApiProperty({
@@ -16,8 +17,13 @@ export class AuthResponseDto {
   @ApiProperty({ description: 'Whether the user is active', example: true })
   isActive!: boolean;
 
-  @ApiProperty({ description: 'User roles', example: ['user'] })
-  roles!: string[];
+  @ApiProperty({
+    description: 'User roles',
+    enum: ValidRoles,
+    isArray: true,
+    example: [ValidRoles.USER],
+  })
+  roles!: ValidRoles[];
 
   @ApiProperty({ description: 'Authentication token' })
   token!: string;
