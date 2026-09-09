@@ -103,7 +103,7 @@ The brands domain exposes these endpoints; GET operations are public and
 mutations require `admin`:
 
 - `POST /api/brands`
-- `GET /api/brands?limit=10&offset=0`
+- `GET /api/brands?limit=10&offset=0&name=son`
 - `GET /api/brands/:id`
 - `PATCH /api/brands/:id`
 - `DELETE /api/brands/:id`

@@ -50,6 +50,18 @@ describe('Brands (e2e)', () => {
       .expect(200);
     expect(list.body).toHaveLength(1);
 
+    const filteredList = await request(app.getHttpServer() as unknown as App)
+      .get('/api/brands?name=SON&limit=5&offset=0')
+      .expect(200);
+    expect(filteredList.body).toHaveLength(1);
+
+    const emptyFilteredList = await request(
+      app.getHttpServer() as unknown as App,
+    )
+      .get('/api/brands?name=Samsung&limit=5&offset=0')
+      .expect(200);
+    expect(emptyFilteredList.body).toHaveLength(0);
+
     await request(app.getHttpServer() as unknown as App)
       .get(`/api/brands/${body.id}`)
       .expect(200);

@@ -22,11 +22,15 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { PaginationDto } from '../common/dto';
 import { Auth } from '../auth/decorators';
 import { ValidRoles } from '../auth/interfaces';
 import { BrandsService } from './brands.service';
-import { BrandResponseDto, CreateBrandDto, UpdateBrandDto } from './dto';
+import {
+  BrandQueryDto,
+  BrandResponseDto,
+  CreateBrandDto,
+  UpdateBrandDto,
+} from './dto';
 
 @ApiTags('brands')
 @Controller('brands')
@@ -46,12 +50,9 @@ export class BrandsController {
   @Get()
   @ApiOperation({ summary: 'List active brands' })
   @ApiOkResponse({ type: BrandResponseDto, isArray: true })
-  @ApiBadRequestResponse({ description: 'Invalid pagination parameters' })
-  findAll(@Query() paginationDto: PaginationDto): Promise<BrandResponseDto[]> {
-    return this.brandsService.findAll(
-      paginationDto.limit,
-      paginationDto.offset,
-    );
+  @ApiBadRequestResponse({ description: 'Invalid query parameters' })
+  findAll(@Query() query: BrandQueryDto): Promise<BrandResponseDto[]> {
+    return this.brandsService.findAll(query);
   }
 
   @Get(':id')

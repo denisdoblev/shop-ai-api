@@ -21,13 +21,13 @@ record are in
 Brand reads are public and brand mutations require `admin`. Creation accepts an
 explicit `slug`; the API does not derive it from `name`.
 
-| Method   | Route                       | Success | Purpose                          |
-| -------- | --------------------------- | ------: | -------------------------------- |
-| `POST`   | `/brands`                   |     201 | Create a brand                   |
-| `GET`    | `/brands?limit=10&offset=0` |     200 | List active brands               |
-| `GET`    | `/brands/:id`               |     200 | Read an active brand             |
-| `PATCH`  | `/brands/:id`               |     200 | Partially update an active brand |
-| `DELETE` | `/brands/:id`               |     204 | Soft-delete a brand              |
+| Method   | Route                                | Success | Purpose                          |
+| -------- | ------------------------------------ | ------: | -------------------------------- |
+| `POST`   | `/brands`                            |     201 | Create a brand                   |
+| `GET`    | `/brands?limit=10&offset=0&name=son` |     200 | List active brands               |
+| `GET`    | `/brands/:id`                        |     200 | Read an active brand             |
+| `PATCH`  | `/brands/:id`                        |     200 | Partially update an active brand |
+| `DELETE` | `/brands/:id`                        |     204 | Soft-delete a brand              |
 
 Create fields are `name` (required, at most 100 characters), `slug` (required,
 at most 120 characters), and `logoUrl` (optional URL or `null`). Patch accepts the
@@ -35,7 +35,8 @@ same fields optionally. Responses expose `id`, `name`, `slug`, `logoUrl`,
 `createdAt`, and `updatedAt`; they do not expose `deletedAt`.
 
 `GET /brands` uses the shared `limit`/`offset` pagination contract, defaulting to
-10 and 0. Results are ordered by name and then ID. No pagination envelope or total
+10 and 0. The optional `name` parameter filters by a case-insensitive partial
+match. Results are ordered by name and then ID. No pagination envelope or total
 count is returned because neither is an established project convention.
 
 Active slugs are unique. A duplicate returns 409. Deletion uses TypeORM soft

@@ -1,5 +1,5 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
-import { QueryFailedError, Repository } from 'typeorm';
+import { ILike, QueryFailedError, Repository } from 'typeorm';
 import { BrandsService } from './brands.service';
 import { Brand } from './entities/brand.entity';
 import { Product } from '../products/entities/product.entity';
@@ -55,10 +55,27 @@ describe('BrandsService', () => {
   it('lists active brands with deterministic pagination', async () => {
     repository.find.mockResolvedValue([brand]);
 
-    await expect(service.findAll(10, 20)).resolves.toHaveLength(1);
+    await expect(
+      service.findAll({ limit: 10, offset: 20 }),
+    ).resolves.toHaveLength(1);
     expect(repository.find).toHaveBeenCalledWith({
+      where: {},
       take: 10,
       skip: 20,
+      order: { name: 'ASC', id: 'ASC' },
+    });
+  });
+
+  it('filters brands by a case-insensitive partial name match', async () => {
+    repository.find.mockResolvedValue([brand]);
+
+    await expect(
+      service.findAll({ limit: 10, offset: 0, name: 'on' }),
+    ).resolves.toHaveLength(1);
+    expect(repository.find).toHaveBeenCalledWith({
+      where: { name: ILike('%on%') },
+      take: 10,
+      skip: 0,
       order: { name: 'ASC', id: 'ASC' },
     });
   });

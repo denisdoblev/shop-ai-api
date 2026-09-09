@@ -24,12 +24,13 @@ describe('BrandsController', () => {
     expect(brandsService.create).toHaveBeenCalledWith(dto);
   });
 
-  it('delegates pagination to the service', async () => {
+  it('delegates pagination and name filtering to the service', async () => {
     brandsService.findAll.mockResolvedValue([]);
+    const query = { limit: 5, offset: 10, name: 'son' };
 
-    await controller.findAll({ limit: 5, offset: 10 });
+    await controller.findAll(query);
 
-    expect(brandsService.findAll).toHaveBeenCalledWith(5, 10);
+    expect(brandsService.findAll).toHaveBeenCalledWith(query);
   });
 
   it('delegates lookup, update and removal to the service', async () => {

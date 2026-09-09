@@ -4,9 +4,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { QueryFailedError, Repository } from 'typeorm';
+import { FindOptionsWhere, ILike, QueryFailedError, Repository } from 'typeorm';
 import { Product } from '../products/entities/product.entity';
-import { BrandResponseDto, CreateBrandDto, UpdateBrandDto } from './dto';
+import {
+  BrandQueryDto,
+  BrandResponseDto,
+  CreateBrandDto,
+  UpdateBrandDto,
+} from './dto';
 import { Brand } from './entities/brand.entity';
 
 interface PostgresError {
@@ -34,10 +39,16 @@ export class BrandsService {
     }
   }
 
-  async findAll(limit: number, offset: number): Promise<BrandResponseDto[]> {
+  async findAll(query: BrandQueryDto): Promise<BrandResponseDto[]> {
+    const where: FindOptionsWhere<Brand> = {};
+    if (query.name !== undefined) {
+      where.name = ILike(`%${query.name}%`);
+    }
+
     const brands = await this.brandRepository.find({
-      take: limit,
-      skip: offset,
+      where,
+      take: query.limit,
+      skip: query.offset,
       order: { name: 'ASC', id: 'ASC' },
     });
 
