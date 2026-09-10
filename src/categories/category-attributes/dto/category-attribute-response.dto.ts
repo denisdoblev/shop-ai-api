@@ -5,10 +5,10 @@ export class CategoryAttributeResponseDto {
   id!: string;
 
   @ApiProperty({ format: 'uuid' })
-  categoryId!: string;
-
-  @ApiProperty({ format: 'uuid' })
   attributeId!: string;
+
+  @ApiProperty({ example: 'Battery life' })
+  name!: string;
 
   @ApiProperty({ minimum: 0 })
   position!: number;

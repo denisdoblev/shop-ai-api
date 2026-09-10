@@ -92,6 +92,10 @@ The POST body requires `attributeId` and accepts optional non-negative `position
 `(categoryId, attributeId)` pair is unique, but the pair can be recreated after a
 soft delete.
 
+Responses include the association `id`, `attributeId`, attribute `name`,
+`position`, and timestamps. They omit `categoryId` because it is already part of
+the request URL.
+
 ## Attributes
 
 Attributes define the reusable typed fields used later by product specifications.

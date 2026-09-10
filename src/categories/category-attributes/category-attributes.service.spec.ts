@@ -14,7 +14,7 @@ describe('CategoryAttributesService', () => {
     categoryId,
     category: {} as Category,
     attributeId,
-    attribute: {} as Attribute,
+    attribute: { name: 'Battery life' } as Attribute,
     position: 0,
     createdAt: now,
     updatedAt: now,
@@ -39,7 +39,10 @@ describe('CategoryAttributesService', () => {
 
   it('creates a suggestion after validating category and attribute', async () => {
     categoryRepository.findOneBy.mockResolvedValue({ id: categoryId });
-    attributeRepository.findOneBy.mockResolvedValue({ id: attributeId });
+    attributeRepository.findOneBy.mockResolvedValue({
+      id: attributeId,
+      name: 'Battery life',
+    });
     const positionedCategoryAttribute = { ...categoryAttribute, position: 2 };
     categoryAttributeRepository.create.mockReturnValue(
       positionedCategoryAttribute,
@@ -58,7 +61,12 @@ describe('CategoryAttributesService', () => {
       attributeId,
       position: 2,
     });
-    expect(result).toMatchObject({ categoryId, attributeId, position: 2 });
+    expect(result).toMatchObject({
+      attributeId,
+      name: 'Battery life',
+      position: 2,
+    });
+    expect(result).not.toHaveProperty('categoryId');
     expect(result).not.toHaveProperty('deletedAt');
   });
 
@@ -69,6 +77,7 @@ describe('CategoryAttributesService', () => {
     await expect(service.findAll(categoryId)).resolves.toHaveLength(1);
     expect(categoryAttributeRepository.find).toHaveBeenCalledWith({
       where: { categoryId },
+      relations: { attribute: true },
       order: { position: 'ASC', id: 'ASC' },
     });
   });

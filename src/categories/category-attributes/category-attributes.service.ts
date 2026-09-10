@@ -33,6 +33,7 @@ export class CategoryAttributesService {
     await this.ensureCategory(categoryId);
     const categoryAttributes = await this.categoryAttributeRepository.find({
       where: { categoryId },
+      relations: { attribute: true },
       order: { position: 'ASC', id: 'ASC' },
     });
 
@@ -46,7 +47,9 @@ export class CategoryAttributesService {
     createCategoryAttributeDto: CreateCategoryAttributeDto,
   ): Promise<CategoryAttributeResponseDto> {
     await this.ensureCategory(categoryId);
-    await this.ensureAttribute(createCategoryAttributeDto.attributeId);
+    const attribute = await this.ensureAttribute(
+      createCategoryAttributeDto.attributeId,
+    );
     const categoryAttribute = this.categoryAttributeRepository.create({
       categoryId,
       attributeId: createCategoryAttributeDto.attributeId,
@@ -56,6 +59,7 @@ export class CategoryAttributesService {
     try {
       return this.toResponse(
         await this.categoryAttributeRepository.save(categoryAttribute),
+        attribute.name,
       );
     } catch (error: unknown) {
       this.throwIfActivePairConflict(error);
@@ -85,22 +89,25 @@ export class CategoryAttributesService {
     }
   }
 
-  private async ensureAttribute(attributeId: string): Promise<void> {
+  private async ensureAttribute(attributeId: string): Promise<Attribute> {
     const attribute = await this.attributeRepository.findOneBy({
       id: attributeId,
     });
     if (!attribute) {
       throw new NotFoundException(`Attribute with id ${attributeId} not found`);
     }
+
+    return attribute;
   }
 
   private toResponse(
     categoryAttribute: CategoryAttribute,
+    attributeName = categoryAttribute.attribute.name,
   ): CategoryAttributeResponseDto {
     return {
       id: categoryAttribute.id,
-      categoryId: categoryAttribute.categoryId,
       attributeId: categoryAttribute.attributeId,
+      name: attributeName,
       position: categoryAttribute.position,
       createdAt: categoryAttribute.createdAt,
       updatedAt: categoryAttribute.updatedAt,

@@ -48,11 +48,25 @@ describe('Category attributes (e2e)', () => {
       .send({ attributeId, position: 2 })
       .expect(201);
     expect((created.body as { position: number }).position).toBe(2);
+    expect(created.body).toMatchObject({
+      attributeId,
+      name: 'Battery life',
+    });
+    expect(created.body).not.toHaveProperty('categoryId');
 
     const list = await request(app.getHttpServer() as unknown as App)
       .get(`/api/categories/${categoryId}/attributes`)
       .expect(200);
-    expect(list.body).toHaveLength(1);
+    const suggestions = list.body as unknown as Array<{
+      attributeId: string;
+      name: string;
+    }>;
+    expect(suggestions).toHaveLength(1);
+    expect(suggestions[0]).toMatchObject({
+      attributeId,
+      name: 'Battery life',
+    });
+    expect(suggestions[0]).not.toHaveProperty('categoryId');
 
     await request(app.getHttpServer() as unknown as App)
       .post(`/api/categories/${categoryId}/attributes`)
