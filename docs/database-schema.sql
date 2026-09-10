@@ -280,6 +280,10 @@ CREATE TABLE product_prices (
 -- Brands
 -- ------------------------------------------------------------
 
+CREATE UNIQUE INDEX uq_brands_name_active
+    ON brands(LOWER(name))
+    WHERE deleted_at IS NULL;
+
 CREATE UNIQUE INDEX uq_brands_slug_active
     ON brands(slug)
     WHERE deleted_at IS NULL;

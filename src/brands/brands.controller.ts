@@ -42,13 +42,15 @@ export class BrandsController {
   @ApiOperation({ summary: 'Create a brand' })
   @ApiCreatedResponse({ type: BrandResponseDto })
   @ApiBadRequestResponse({ description: 'Invalid request body' })
-  @ApiConflictResponse({ description: 'An active brand uses the same slug' })
+  @ApiConflictResponse({
+    description: 'A non-deleted brand uses the same name or slug',
+  })
   create(@Body() createBrandDto: CreateBrandDto): Promise<BrandResponseDto> {
     return this.brandsService.create(createBrandDto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'List active brands' })
+  @ApiOperation({ summary: 'List non-deleted brands' })
   @ApiOkResponse({ type: BrandResponseDto, isArray: true })
   @ApiBadRequestResponse({ description: 'Invalid query parameters' })
   findAll(@Query() query: BrandQueryDto): Promise<BrandResponseDto[]> {
@@ -56,7 +58,7 @@ export class BrandsController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get an active brand by ID' })
+  @ApiOperation({ summary: 'Get a non-deleted brand by ID' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @ApiOkResponse({ type: BrandResponseDto })
   @ApiBadRequestResponse({ description: 'Invalid UUID' })
@@ -69,12 +71,14 @@ export class BrandsController {
 
   @Patch(':id')
   @Auth(ValidRoles.ADMIN)
-  @ApiOperation({ summary: 'Update an active brand' })
+  @ApiOperation({ summary: 'Update a non-deleted brand' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @ApiOkResponse({ type: BrandResponseDto })
   @ApiBadRequestResponse({ description: 'Invalid UUID or request body' })
   @ApiNotFoundResponse({ description: 'Brand not found' })
-  @ApiConflictResponse({ description: 'An active brand uses the same slug' })
+  @ApiConflictResponse({
+    description: 'A non-deleted brand uses the same name or slug',
+  })
   update(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() updateBrandDto: UpdateBrandDto,
@@ -85,7 +89,7 @@ export class BrandsController {
   @Delete(':id')
   @Auth(ValidRoles.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Soft-delete an active brand' })
+  @ApiOperation({ summary: 'Soft-delete a brand' })
   @ApiParam({ name: 'id', type: String, format: 'uuid' })
   @ApiNoContentResponse({ description: 'Brand soft-deleted' })
   @ApiBadRequestResponse({ description: 'Invalid UUID' })

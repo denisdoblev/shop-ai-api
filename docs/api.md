@@ -21,17 +21,17 @@ record are in
 Brand reads are public and brand mutations require `admin`. Creation accepts an
 explicit `slug`; the API does not derive it from `name`.
 
-| Method   | Route                                | Success | Purpose                          |
-| -------- | ------------------------------------ | ------: | -------------------------------- |
-| `POST`   | `/brands`                            |     201 | Create a brand                   |
-| `GET`    | `/brands?limit=10&offset=0&name=son` |     200 | List active brands               |
-| `GET`    | `/brands/:id`                        |     200 | Read an active brand             |
-| `PATCH`  | `/brands/:id`                        |     200 | Partially update an active brand |
-| `DELETE` | `/brands/:id`                        |     204 | Soft-delete a brand              |
+| Method   | Route                                | Success | Purpose                    |
+| -------- | ------------------------------------ | ------: | -------------------------- |
+| `POST`   | `/brands`                            |     201 | Create a brand             |
+| `GET`    | `/brands?limit=10&offset=0&name=son` |     200 | List non-deleted brands    |
+| `GET`    | `/brands/:id`                        |     200 | Read a non-deleted brand   |
+| `PATCH`  | `/brands/:id`                        |     200 | Update a non-deleted brand |
+| `DELETE` | `/brands/:id`                        |     204 | Soft-delete a brand        |
 
 Create fields are `name` (required, at most 100 characters), `slug` (required,
-at most 120 characters), and `logoUrl` (optional URL or `null`). Patch accepts the
-same fields optionally. Responses expose `id`, `name`, `slug`, `logoUrl`,
+at most 120 characters), and `logoUrl` (optional URL or `null`). Patch accepts
+the same fields optionally. Responses expose `id`, `name`, `slug`, `logoUrl`,
 `createdAt`, and `updatedAt`; they do not expose `deletedAt`.
 
 `GET /brands` uses the shared `limit`/`offset` pagination contract, defaulting to
@@ -39,9 +39,11 @@ same fields optionally. Responses expose `id`, `name`, `slug`, `logoUrl`,
 match. Results are ordered by name and then ID. No pagination envelope or total
 count is returned because neither is an established project convention.
 
-Active slugs are unique. A duplicate returns 409. Deletion uses TypeORM soft
-delete, ordinary reads exclude deleted rows, and the partial unique index permits
-reusing a deleted brand's slug.
+Names and slugs are unique among non-deleted brands. Name uniqueness is
+case-insensitive but otherwise uses the submitted value without whitespace
+normalization. A duplicate returns 409. Deletion uses TypeORM soft delete,
+ordinary reads exclude deleted rows, and partial unique indexes permit reusing a
+deleted brand's name and slug.
 
 ## Approved persistence alignment
 

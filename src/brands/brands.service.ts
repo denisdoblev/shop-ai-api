@@ -34,7 +34,7 @@ export class BrandsService {
     try {
       return this.toResponse(await this.brandRepository.save(brand));
     } catch (error: unknown) {
-      this.throwIfSlugConflict(error);
+      this.throwIfUniqueConflict(error);
       throw error;
     }
   }
@@ -69,7 +69,7 @@ export class BrandsService {
     try {
       return this.toResponse(await this.brandRepository.save(brand));
     } catch (error: unknown) {
-      this.throwIfSlugConflict(error);
+      this.throwIfUniqueConflict(error);
       throw error;
     }
   }
@@ -107,16 +107,21 @@ export class BrandsService {
     };
   }
 
-  private throwIfSlugConflict(error: unknown): void {
+  private throwIfUniqueConflict(error: unknown): void {
     if (!(error instanceof QueryFailedError)) return;
 
     const driverError = error.driverError as PostgresError;
-    if (
-      driverError.code === '23505' &&
-      driverError.constraint === 'uq_brands_slug_active'
-    ) {
+    if (driverError.code !== '23505') return;
+
+    if (driverError.constraint === 'uq_brands_name_active') {
       throw new ConflictException(
-        'An active brand with that slug already exists',
+        'A non-deleted brand with that name already exists',
+      );
+    }
+
+    if (driverError.constraint === 'uq_brands_slug_active') {
+      throw new ConflictException(
+        'A non-deleted brand with that slug already exists',
       );
     }
   }

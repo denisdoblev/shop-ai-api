@@ -5,8 +5,9 @@ The proposed catalog schema is stored in [`database-schema.sql`](database-schema
 The TypeORM application schema deliberately diverges from the reference SQL for
 primary-key defaults and audit timestamps: application tables use generated UUIDs
 and `TIMESTAMPTZ`. The catalog migrations implement the listed tables, partial
-unique indexes, product brand/category indexes, price history index, and typed EAV
-boolean, numeric, and string filter indexes.
+unique indexes (including case-insensitive active brand names), product
+brand/category indexes, price history index, and typed EAV boolean, numeric, and
+string filter indexes.
 
 ## Scope
 

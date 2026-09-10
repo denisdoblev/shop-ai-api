@@ -88,20 +88,45 @@ describe('Brands (e2e)', () => {
 
     await request(app.getHttpServer() as unknown as App)
       .post('/api/brands')
-      .send({ name: 'New Sony', slug: 'sony' })
+      .send({ name: 'sony corporation', slug: 'sony' })
       .expect(201);
   });
 
-  it('rejects duplicate active slugs and invalid input', async () => {
-    await request(app.getHttpServer() as unknown as App)
+  it('rejects duplicate non-deleted names, slugs, and invalid input', async () => {
+    const sony = await request(app.getHttpServer() as unknown as App)
       .post('/api/brands')
       .send({ name: 'Sony', slug: 'sony' })
       .expect(201);
 
     await request(app.getHttpServer() as unknown as App)
       .post('/api/brands')
+      .send({ name: 'sony', slug: 'sony-alt' })
+      .expect(409);
+
+    await request(app.getHttpServer() as unknown as App)
+      .post('/api/brands')
+      .send({ name: ' Sony ', slug: 'sony-spaced' })
+      .expect(201);
+
+    await request(app.getHttpServer() as unknown as App)
+      .post('/api/brands')
       .send({ name: 'Other Sony', slug: 'sony' })
       .expect(409);
+
+    const samsung = await request(app.getHttpServer() as unknown as App)
+      .post('/api/brands')
+      .send({ name: 'Samsung', slug: 'samsung' })
+      .expect(201);
+
+    await request(app.getHttpServer() as unknown as App)
+      .patch(`/api/brands/${(samsung.body as { id: string }).id}`)
+      .send({ name: 'SONY' })
+      .expect(409);
+
+    await request(app.getHttpServer() as unknown as App)
+      .patch(`/api/brands/${(sony.body as { id: string }).id}`)
+      .send({ name: 'sony' })
+      .expect(200);
 
     await request(app.getHttpServer() as unknown as App)
       .post('/api/brands')

@@ -52,7 +52,7 @@ describe('BrandsService', () => {
     expect(result).not.toHaveProperty('deletedAt');
   });
 
-  it('lists active brands with deterministic pagination', async () => {
+  it('lists non-deleted brands with deterministic pagination', async () => {
     repository.find.mockResolvedValue([brand]);
 
     await expect(
@@ -80,7 +80,7 @@ describe('BrandsService', () => {
     });
   });
 
-  it('throws not found when an active brand does not exist', async () => {
+  it('throws not found when a non-deleted brand does not exist', async () => {
     repository.findOneBy.mockResolvedValue(null);
 
     await expect(service.findOne(brand.id)).rejects.toBeInstanceOf(
@@ -126,7 +126,7 @@ describe('BrandsService', () => {
     expect(repository.softRemove).not.toHaveBeenCalled();
   });
 
-  it('maps an active slug unique violation to conflict', async () => {
+  it('maps a non-deleted slug unique violation to conflict', async () => {
     repository.create.mockReturnValue(brand);
     repository.save.mockRejectedValue(
       new QueryFailedError(
@@ -142,5 +142,58 @@ describe('BrandsService', () => {
     await expect(
       service.create({ name: 'Sony', slug: 'sony' }),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('maps a non-deleted name unique violation on create to conflict', async () => {
+    repository.create.mockReturnValue(brand);
+    repository.save.mockRejectedValue(
+      new QueryFailedError(
+        'INSERT',
+        [],
+        Object.assign(new Error('duplicate key'), {
+          code: '23505',
+          constraint: 'uq_brands_name_active',
+        }),
+      ),
+    );
+
+    await expect(
+      service.create({ name: 'sony', slug: 'sony-alt' }),
+    ).rejects.toThrow('A non-deleted brand with that name already exists');
+  });
+
+  it('maps a non-deleted name unique violation on update to conflict', async () => {
+    repository.findOneBy.mockResolvedValue(brand);
+    repository.save.mockRejectedValue(
+      new QueryFailedError(
+        'UPDATE',
+        [],
+        Object.assign(new Error('duplicate key'), {
+          code: '23505',
+          constraint: 'uq_brands_name_active',
+        }),
+      ),
+    );
+
+    await expect(
+      service.update(brand.id, { name: 'Samsung' }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('preserves unknown persistence errors', async () => {
+    const error = new QueryFailedError(
+      'INSERT',
+      [],
+      Object.assign(new Error('duplicate key'), {
+        code: '23505',
+        constraint: 'uq_other_constraint',
+      }),
+    );
+    repository.create.mockReturnValue(brand);
+    repository.save.mockRejectedValue(error);
+
+    await expect(service.create({ name: 'Sony', slug: 'sony' })).rejects.toBe(
+      error,
+    );
   });
 });
