@@ -5,9 +5,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { QueryFailedError, Repository } from 'typeorm';
+import { FindOptionsWhere, ILike, QueryFailedError, Repository } from 'typeorm';
 import { Product } from '../products/entities/product.entity';
 import {
+  CategoryQueryDto,
   CategoryResponseDto,
   CreateCategoryDto,
   UpdateCategoryDto,
@@ -45,10 +46,16 @@ export class CategoriesService {
     }
   }
 
-  async findAll(limit: number, offset: number): Promise<CategoryResponseDto[]> {
+  async findAll(query: CategoryQueryDto): Promise<CategoryResponseDto[]> {
+    const where: FindOptionsWhere<Category> = {};
+    if (query.name !== undefined) {
+      where.name = ILike(`%${query.name}%`);
+    }
+
     const categories = await this.categoryRepository.find({
-      take: limit,
-      skip: offset,
+      where,
+      take: query.limit,
+      skip: query.offset,
       order: { name: 'ASC', id: 'ASC' },
     });
 

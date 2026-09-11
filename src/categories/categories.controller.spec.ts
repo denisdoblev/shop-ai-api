@@ -21,10 +21,11 @@ describe('CategoriesController', () => {
     categoriesService.findAll.mockResolvedValue([]);
 
     await controller.create(dto);
-    await controller.findAll({ limit: 5, offset: 10 });
+    const query = { limit: 5, offset: 10, name: 'phone' };
+    await controller.findAll(query);
 
     expect(categoriesService.create).toHaveBeenCalledWith(dto);
-    expect(categoriesService.findAll).toHaveBeenCalledWith(5, 10);
+    expect(categoriesService.findAll).toHaveBeenCalledWith(query);
   });
 
   it('delegates lookup, update and removal', async () => {

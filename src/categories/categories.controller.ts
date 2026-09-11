@@ -22,11 +22,11 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { PaginationDto } from '../common/dto';
 import { Auth } from '../auth/decorators';
 import { ValidRoles } from '../auth/interfaces';
 import { CategoriesService } from './categories.service';
 import {
+  CategoryQueryDto,
   CategoryResponseDto,
   CreateCategoryDto,
   UpdateCategoryDto,
@@ -53,14 +53,9 @@ export class CategoriesController {
   @Get()
   @ApiOperation({ summary: 'List active categories' })
   @ApiOkResponse({ type: CategoryResponseDto, isArray: true })
-  @ApiBadRequestResponse({ description: 'Invalid pagination parameters' })
-  findAll(
-    @Query() paginationDto: PaginationDto,
-  ): Promise<CategoryResponseDto[]> {
-    return this.categoriesService.findAll(
-      paginationDto.limit,
-      paginationDto.offset,
-    );
+  @ApiBadRequestResponse({ description: 'Invalid query parameters' })
+  findAll(@Query() query: CategoryQueryDto): Promise<CategoryResponseDto[]> {
+    return this.categoriesService.findAll(query);
   }
 
   @Get(':id')

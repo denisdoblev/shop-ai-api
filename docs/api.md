@@ -56,13 +56,14 @@ schema decision.
 
 ## Categories
 
-Categories use the same plain responses, `limit`/`offset` pagination, active-slug
-uniqueness, and soft-delete behavior as brands.
+Categories use the same plain responses, `limit`/`offset` pagination, optional
+case-insensitive partial `name` filter, active-slug uniqueness, and soft-delete
+behavior as brands.
 
 | Method   | Route                           | Success | Purpose                             |
 | -------- | ------------------------------- | ------: | ----------------------------------- |
 | `POST`   | `/categories`                   |     201 | Create a root or child category     |
-| `GET`    | `/categories?limit=10&offset=0` |     200 | List active categories              |
+| `GET`    | `/categories?limit=10&offset=0&name=audio` |     200 | List and filter active categories   |
 | `GET`    | `/categories/:id`               |     200 | Read an active category             |
 | `PATCH`  | `/categories/:id`               |     200 | Partially update an active category |
 | `DELETE` | `/categories/:id`               |     204 | Soft-delete a category              |

@@ -4,7 +4,7 @@ export class CategoryResponseDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;
 
-  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   parentId!: string | null;
 
   @ApiProperty({ example: 'Headphones' })
@@ -13,7 +13,7 @@ export class CategoryResponseDto {
   @ApiProperty({ example: 'headphones' })
   slug!: string;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true })
   description!: string | null;
 
   @ApiProperty({ type: String, format: 'date-time' })

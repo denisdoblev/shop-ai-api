@@ -9,6 +9,7 @@ import {
 
 export class CreateCategoryDto {
   @ApiPropertyOptional({
+    type: String,
     format: 'uuid',
     nullable: true,
     description: 'Active parent category ID',
@@ -30,6 +31,7 @@ export class CreateCategoryDto {
   slug!: string;
 
   @ApiPropertyOptional({
+    type: String,
     example: 'Over-ear, on-ear, and in-ear headphones.',
     nullable: true,
   })

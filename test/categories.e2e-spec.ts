@@ -120,4 +120,27 @@ describe('Categories (e2e)', () => {
       .send({ name: '', slug: 'invalid', unexpected: true })
       .expect(400);
   });
+
+  it('filters category names case-insensitively before pagination', async () => {
+    for (const category of [
+      { name: 'Audio Accessories', slug: 'audio-accessories' },
+      { name: 'Headphones', slug: 'headphones' },
+      { name: 'Phones', slug: 'phones' },
+    ]) {
+      await request(app.getHttpServer() as unknown as App)
+        .post('/api/categories')
+        .send(category)
+        .expect(201);
+    }
+
+    const response = await request(app.getHttpServer() as unknown as App)
+      .get('/api/categories?limit=1&offset=1&name=PHONE')
+      .expect(200);
+
+    expect(response.body).toMatchObject([{ name: 'Phones' }]);
+
+    await request(app.getHttpServer() as unknown as App)
+      .get(`/api/categories?name=${'x'.repeat(101)}`)
+      .expect(400);
+  });
 });

@@ -117,13 +117,15 @@ contracts and catalog API decisions.
 Hierarchical categories expose:
 
 - `POST /api/categories`
-- `GET /api/categories?limit=10&offset=0`
+- `GET /api/categories?limit=10&offset=0&name=audio`
 - `GET /api/categories/:id`
 - `PATCH /api/categories/:id`
 - `DELETE /api/categories/:id`
 
 `parentId` is optional and nullable. When provided, it must reference an active
 category, and a category cannot be its own parent. Deletion is soft.
+The optional `name` query performs a case-insensitive partial match before
+pagination.
 
 Suggested attributes for a category are managed at
 `/api/categories/:categoryId/attributes`. They are a form template only and do

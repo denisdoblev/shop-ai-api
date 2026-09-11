@@ -3,7 +3,7 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
-import { QueryFailedError, Repository } from 'typeorm';
+import { ILike, QueryFailedError, Repository } from 'typeorm';
 import { CategoriesService } from './categories.service';
 import { Category } from './entities/category.entity';
 import { CategoryAttribute } from './entities/category-attribute.entity';
@@ -75,10 +75,27 @@ describe('CategoriesService', () => {
   it('lists active categories with deterministic pagination', async () => {
     repository.find.mockResolvedValue([category]);
 
-    await expect(service.findAll(10, 0)).resolves.toHaveLength(1);
+    await expect(
+      service.findAll({ limit: 10, offset: 0 }),
+    ).resolves.toHaveLength(1);
     expect(repository.find).toHaveBeenCalledWith({
+      where: {},
       take: 10,
       skip: 0,
+      order: { name: 'ASC', id: 'ASC' },
+    });
+  });
+
+  it('filters categories by a case-insensitive partial name', async () => {
+    repository.find.mockResolvedValue([category]);
+
+    await expect(
+      service.findAll({ limit: 5, offset: 10, name: 'PHONE' }),
+    ).resolves.toHaveLength(1);
+    expect(repository.find).toHaveBeenCalledWith({
+      where: { name: ILike('%PHONE%') },
+      take: 5,
+      skip: 10,
       order: { name: 'ASC', id: 'ASC' },
     });
   });
