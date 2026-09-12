@@ -26,10 +26,14 @@ describe('AttributesController', () => {
     attributesService.findAll.mockResolvedValue([]);
 
     await controller.create(dto);
-    await controller.findAll({ limit: 5, offset: 10 });
+    await controller.findAll({ limit: 5, offset: 10, name: 'battery' });
 
     expect(attributesService.create).toHaveBeenCalledWith(dto);
-    expect(attributesService.findAll).toHaveBeenCalledWith(5, 10);
+    expect(attributesService.findAll).toHaveBeenCalledWith({
+      limit: 5,
+      offset: 10,
+      name: 'battery',
+    });
   });
 
   it('delegates lookup, update and removal', async () => {

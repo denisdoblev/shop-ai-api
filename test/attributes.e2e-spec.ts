@@ -98,4 +98,31 @@ describe('Attributes (e2e)', () => {
       .send({ name: 'Invalid', slug: 'invalid', dataType: 'date' })
       .expect(400);
   });
+
+  it('filters attribute names case-insensitively before pagination', async () => {
+    for (const attribute of [
+      {
+        name: 'Battery capacity',
+        slug: 'battery-capacity',
+        dataType: 'number',
+      },
+      { name: 'Battery life', slug: 'battery-life', dataType: 'number' },
+      { name: 'Bluetooth', slug: 'bluetooth', dataType: 'boolean' },
+    ]) {
+      await request(app.getHttpServer() as unknown as App)
+        .post('/api/attributes')
+        .send(attribute)
+        .expect(201);
+    }
+
+    const response = await request(app.getHttpServer() as unknown as App)
+      .get('/api/attributes?limit=1&offset=1&name=BATTERY')
+      .expect(200);
+
+    expect(response.body).toMatchObject([{ name: 'Battery life' }]);
+
+    await request(app.getHttpServer() as unknown as App)
+      .get(`/api/attributes?name=${'x'.repeat(101)}`)
+      .expect(400);
+  });
 });

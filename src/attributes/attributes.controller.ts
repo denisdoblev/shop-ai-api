@@ -22,11 +22,11 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { PaginationDto } from '../common/dto';
 import { Auth } from '../auth/decorators';
 import { ValidRoles } from '../auth/interfaces';
 import { AttributesService } from './attributes.service';
 import {
+  AttributeQueryDto,
   AttributeResponseDto,
   CreateAttributeDto,
   UpdateAttributeDto,
@@ -55,13 +55,8 @@ export class AttributesController {
   @ApiOperation({ summary: 'List active attributes' })
   @ApiOkResponse({ type: AttributeResponseDto, isArray: true })
   @ApiBadRequestResponse({ description: 'Invalid pagination parameters' })
-  findAll(
-    @Query() paginationDto: PaginationDto,
-  ): Promise<AttributeResponseDto[]> {
-    return this.attributesService.findAll(
-      paginationDto.limit,
-      paginationDto.offset,
-    );
+  findAll(@Query() query: AttributeQueryDto): Promise<AttributeResponseDto[]> {
+    return this.attributesService.findAll(query);
   }
 
   @Get(':id')

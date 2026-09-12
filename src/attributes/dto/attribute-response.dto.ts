@@ -14,7 +14,7 @@ export class AttributeResponseDto {
   @ApiProperty({ enum: AttributeDataType })
   dataType!: AttributeDataType;
 
-  @ApiPropertyOptional({ example: 'hours', nullable: true })
+  @ApiPropertyOptional({ type: String, example: 'hours', nullable: true })
   unit!: string | null;
 
   @ApiProperty({ type: String, format: 'date-time' })

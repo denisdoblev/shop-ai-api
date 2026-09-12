@@ -1,5 +1,5 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
-import { QueryFailedError, Repository } from 'typeorm';
+import { ILike, QueryFailedError, Repository } from 'typeorm';
 import { AttributesService } from './attributes.service';
 import { AttributeDataType } from './entities/attribute-data-type.enum';
 import { Attribute } from './entities/attribute.entity';
@@ -58,10 +58,27 @@ describe('AttributesService', () => {
   it('lists active attributes with deterministic pagination', async () => {
     repository.find.mockResolvedValue([attribute]);
 
-    await expect(service.findAll(10, 0)).resolves.toHaveLength(1);
+    await expect(
+      service.findAll({ limit: 10, offset: 0 }),
+    ).resolves.toHaveLength(1);
     expect(repository.find).toHaveBeenCalledWith({
+      where: {},
       take: 10,
       skip: 0,
+      order: { name: 'ASC', id: 'ASC' },
+    });
+  });
+
+  it('filters attributes by a case-insensitive partial name', async () => {
+    repository.find.mockResolvedValue([attribute]);
+
+    await expect(
+      service.findAll({ limit: 5, offset: 10, name: 'LIFE' }),
+    ).resolves.toHaveLength(1);
+    expect(repository.find).toHaveBeenCalledWith({
+      where: { name: ILike('%LIFE%') },
+      take: 5,
+      skip: 10,
       order: { name: 'ASC', id: 'ASC' },
     });
   });

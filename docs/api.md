@@ -106,7 +106,7 @@ They use the same CRUD routes, active-slug uniqueness, soft-delete behavior, and
 | Method   | Route                           | Success | Purpose                       |
 | -------- | ------------------------------- | ------: | ----------------------------- |
 | `POST`   | `/attributes`                   |     201 | Create an attribute           |
-| `GET`    | `/attributes?limit=10&offset=0` |     200 | List active attributes        |
+| `GET`    | `/attributes?limit=10&offset=0&name=battery` | 200 | List active attributes |
 | `GET`    | `/attributes/:id`               |     200 | Read an active attribute      |
 | `PATCH`  | `/attributes/:id`               |     200 | Partially update an attribute |
 | `DELETE` | `/attributes/:id`               |     204 | Soft-delete an attribute      |
@@ -114,7 +114,9 @@ They use the same CRUD routes, active-slug uniqueness, soft-delete behavior, and
 `name`, explicit `slug`, and `dataType` are required. `dataType` is constrained
 to `string`, `number`, or `boolean`, mirroring the database check constraint and
 the typed EAV model. `unit` is optional and nullable; it can be used for values
-such as `hours` or `kg`. Attribute responses do not expose soft-delete state.
+such as `hours` or `kg`. The optional `name` query performs a case-insensitive
+partial match before pagination and accepts at most 100 characters. Attribute
+responses do not expose soft-delete state.
 
 ## Products
 

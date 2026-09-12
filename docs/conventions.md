@@ -46,8 +46,8 @@ This document is the source of truth for conventions established by the reposito
 - **Strong inferred:** Request bodies use validated DTO classes and successful responses are plain objects without a response envelope.
 - **Strong inferred:** Shared `Api*Responses` decorators document success/common failure statuses and bearer auth; DTO/entity fields use `@ApiProperty`.
 - **Explicit:** Pagination uses `limit`/`offset`, transforms query strings to numbers, and applies defaults 10/0 (`src/common/dto/pagination.dto.ts`).
-- **Explicit:** Catalog listing supports `limit`/`offset`; brands and categories
-  support a case-insensitive partial `name` filter, and products also support
+- **Explicit:** Catalog listing supports `limit`/`offset`; brands, categories,
+  and attributes support a case-insensitive partial `name` filter, and products also support
   brand/category and typed EAV filters. Sorting remains internal to each service;
   pagination metadata, response versioning, and a common data envelope are not established.
 

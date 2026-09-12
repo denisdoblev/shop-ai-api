@@ -4,10 +4,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { QueryFailedError, Repository } from 'typeorm';
+import { FindOptionsWhere, ILike, QueryFailedError, Repository } from 'typeorm';
 import { CategoryAttribute } from '../categories/entities/category-attribute.entity';
 import { ProductSpecification } from '../products/entities/product-specification.entity';
 import {
+  AttributeQueryDto,
   AttributeResponseDto,
   CreateAttributeDto,
   UpdateAttributeDto,
@@ -43,13 +44,16 @@ export class AttributesService {
     }
   }
 
-  async findAll(
-    limit: number,
-    offset: number,
-  ): Promise<AttributeResponseDto[]> {
+  async findAll(query: AttributeQueryDto): Promise<AttributeResponseDto[]> {
+    const where: FindOptionsWhere<Attribute> = {};
+    if (query.name !== undefined) {
+      where.name = ILike(`%${query.name}%`);
+    }
+
     const attributes = await this.attributeRepository.find({
-      take: limit,
-      skip: offset,
+      where,
+      take: query.limit,
+      skip: query.offset,
       order: { name: 'ASC', id: 'ASC' },
     });
 

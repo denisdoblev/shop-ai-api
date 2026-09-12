@@ -25,7 +25,12 @@ export class CreateAttributeDto {
   @IsEnum(AttributeDataType)
   dataType!: AttributeDataType;
 
-  @ApiPropertyOptional({ example: 'hours', maxLength: 50, nullable: true })
+  @ApiPropertyOptional({
+    type: String,
+    example: 'hours',
+    maxLength: 50,
+    nullable: true,
+  })
   @IsOptional()
   @IsString()
   @MaxLength(50)

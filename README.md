@@ -135,7 +135,8 @@ not constrain the attributes a product may later receive.
 
 Reusable typed attributes expose CRUD endpoints under `/api/attributes`. Their
 `dataType` is one of `string`, `number`, or `boolean`; `unit` is optional and
-nullable. See [`docs/api.md`](docs/api.md) for the contract.
+nullable. Listing accepts an optional case-insensitive partial `name` filter.
+See [`docs/api.md`](docs/api.md) for the contract.
 
 ## Products API
 
