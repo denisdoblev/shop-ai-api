@@ -3,6 +3,14 @@ import { validate } from 'class-validator';
 import { ProductQueryDto } from './product-query.dto';
 
 describe('ProductQueryDto', () => {
+  it('rejects product names longer than 100 characters', async () => {
+    const dto = plainToInstance(ProductQueryDto, { name: 'a'.repeat(101) });
+
+    expect(await validate(dto)).toEqual(
+      expect.arrayContaining([expect.objectContaining({ property: 'name' })]),
+    );
+  });
+
   it.each([
     ['true', true],
     ['false', false],

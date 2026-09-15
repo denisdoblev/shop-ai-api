@@ -7,6 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   FindOptionsWhere,
+  ILike,
   QueryFailedError,
   Repository,
   SelectQueryBuilder,
@@ -65,6 +66,7 @@ export class ProductsService {
     }
 
     const where: FindOptionsWhere<Product> = {};
+    if (query.name) where.name = ILike(`%${query.name}%`);
     if (query.brandId) where.brandId = query.brandId;
     if (query.categoryId) where.categoryId = query.categoryId;
 
@@ -100,6 +102,11 @@ export class ProductsService {
     if (query.categoryId) {
       queryBuilder.andWhere('product.category_id = :categoryId', {
         categoryId: query.categoryId,
+      });
+    }
+    if (query.name) {
+      queryBuilder.andWhere('product.name ILIKE :name', {
+        name: `%${query.name}%`,
       });
     }
 

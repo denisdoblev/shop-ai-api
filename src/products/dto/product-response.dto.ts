@@ -16,10 +16,10 @@ export class ProductResponseDto {
   @ApiProperty({ example: 'sony-wh-1000xm6' })
   slug!: string;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true })
   model!: string | null;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true })
   description!: string | null;
 
   @ApiProperty({ type: String, format: 'date-time' })

@@ -6,10 +6,20 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  MaxLength,
 } from 'class-validator';
 import { PaginationDto } from '../../common/dto';
 
 export class ProductQueryDto extends PaginationDto {
+  @ApiPropertyOptional({
+    description: 'Partial case-insensitive product name search',
+    maxLength: 100,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  name?: string;
+
   @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
   @IsUUID()

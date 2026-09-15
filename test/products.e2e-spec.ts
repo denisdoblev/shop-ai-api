@@ -61,6 +61,20 @@ describe('Products (e2e)', () => {
     expect(list.body).toHaveLength(1);
 
     await request(app.getHttpServer() as unknown as App)
+      .get(
+        `/api/products?name=1000xm&brandId=${brandId}&categoryId=${categoryId}&limit=5`,
+      )
+      .expect(200)
+      .expect(({ body }: { body: unknown[] }) => {
+        expect(body).toHaveLength(1);
+      });
+
+    await request(app.getHttpServer() as unknown as App)
+      .get('/api/products?name=absent')
+      .expect(200)
+      .expect([]);
+
+    await request(app.getHttpServer() as unknown as App)
       .get(`/api/products/${product.id}`)
       .expect(200);
 
@@ -126,6 +140,10 @@ describe('Products (e2e)', () => {
       .expect(400);
 
     await request(app.getHttpServer() as unknown as App)
+      .get(`/api/products?name=${'a'.repeat(101)}`)
+      .expect(400);
+
+    await request(app.getHttpServer() as unknown as App)
       .get(
         `/api/products?specAttributeId=${validId}&specStringValue=value&specBooleanValue=true`,
       )
@@ -186,7 +204,7 @@ describe('Products (e2e)', () => {
 
     const products = await request(app.getHttpServer() as unknown as App)
       .get(
-        `/api/products?specAttributeId=${attributeId}&specNumberMin=25&specNumberMax=35`,
+        `/api/products?name=1000xm6&specAttributeId=${attributeId}&specNumberMin=25&specNumberMax=35`,
       )
       .expect(200);
 

@@ -123,6 +123,9 @@ responses do not expose soft-delete state.
 The product resource stores its catalog identity and required brand/category
 references. Images, specifications, price history, and dynamic EAV filters are
 implemented as separate subresources and query parameters.
+The collection accepts an optional `name` query of up to 100 characters for a
+partial case-insensitive search, combinable with brand, category,
+specification, and pagination filters.
 
 | Method   | Route                         | Success | Purpose                  |
 | -------- | ----------------------------- | ------: | ------------------------ |
