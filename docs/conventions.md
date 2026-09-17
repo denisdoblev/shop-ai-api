@@ -135,6 +135,8 @@ This document is the source of truth for conventions established by the reposito
 - Catalog GET routes are public. Catalog mutations use
   `@Auth(ValidRoles.ADMIN)`; missing/invalid authentication returns 401 and an
   authenticated user without `ADMIN` receives 403.
+- Personal favorite routes use `@Auth()` and `@GetUser('id')`. Services scope
+  every query by that ID and never accept or expose `userId`.
 
 ## 14. Agent Checklist
 

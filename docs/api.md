@@ -131,6 +131,7 @@ specification, and pagination filters.
 | -------- | ----------------------------- | ------: | ------------------------ |
 | `POST`   | `/products`                   |     201 | Create a product         |
 | `GET`    | `/products?limit=10&offset=0` |     200 | List active products     |
+| `GET`    | `/products/search`            |     200 | Search with facets       |
 | `GET`    | `/products/:id`               |     200 | Read an active product   |
 | `PATCH`  | `/products/:id`               |     200 | Partially update product |
 | `DELETE` | `/products/:id`               |     204 | Soft-delete a product    |
@@ -145,6 +146,21 @@ specification filter. Provide `specAttributeId` and optionally exactly matching
 `specNumberMin` and/or `specNumberMax`. Specification values without
 `specAttributeId` are rejected with 400. Filters are applied together with the
 normal brand/category constraints and pagination.
+
+### Product search
+
+`GET /products/search` is additive and does not change `GET /products`. It
+accepts `q`, repeated `categoryId`, repeated `priceRange`, repeated `featureId`,
+`sort`, `limit`, and `offset`. Categories use OR and include descendants, price
+bands use OR, and selected boolean features use AND. Supported price bands are
+`<500`, `500-999.99`, `1000-1499.99`, and `>=1500`.
+
+Text relevance ranks exact, prefix, then contained matches. Without `q`,
+`relevance` falls back to ascending product name. Price facets and sorting use
+the latest active USD record. Products without USD sort last and do not match
+price filters. The visible price remains the latest active record in any
+currency. Facet counts apply the other filter groups and ignore their own.
+The service uses a constant set of aggregate queries without per-product calls.
 
 ### Product prices
 
@@ -175,3 +191,18 @@ Specifications use the public `{ "attributeId", "value" }` contract. The API
 looks up the attribute type and stores the value internally as string, numeric,
 or boolean; those persistence fields are never exposed. `PATCH` and `DELETE`
 address the specification by `attributeId` in the URL.
+
+## Favorites
+
+Favorites are personal resources. All routes require a bearer JWT and derive
+the owner from that JWT; requests and responses never contain `userId`.
+
+| Method   | Route                         | Success | Purpose                         |
+| -------- | ----------------------------- | ------: | ------------------------------- |
+| `GET`    | `/favorites?productId=<uuid>` |     200 | List the current user's entries |
+| `PUT`    | `/favorites/:productId`       |     200 | Create or restore idempotently  |
+| `DELETE` | `/favorites/:productId`       |     204 | Remove idempotently             |
+
+`PUT` returns 404 when the active product does not exist. Deletion is soft and
+restoration reuses the existing favorite identity. Repository queries include
+the authenticated user ID, so another user's favorite is not read or modified.

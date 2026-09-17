@@ -34,6 +34,13 @@ database. The deferred decision about constraining persisted values is documente
 
 Soft-deleted records are excluded from partial unique and query indexes. Foreign keys use `ON DELETE RESTRICT`, so related records must be handled explicitly before deleting their parent.
 
+`product_favorites` is added by
+`1789300000000-CreateProductFavoritesTable.ts`. It uses generated UUID and audit
+columns, restrictive foreign keys to `users` and `products`, an active-user
+lookup index, and a partial unique index on active `(user_id, product_id)`.
+The expansion-only migration preserves existing data. Its `down` path removes
+only this table and its constraints and indexes.
+
 ## Primary keys and nullability
 
 Every table uses an explicitly non-null UUID primary key:

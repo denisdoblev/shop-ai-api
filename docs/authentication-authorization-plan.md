@@ -1,8 +1,8 @@
 # Authentication and authorization implementation plan
 
-Status: **implemented on 2026-09-09 for existing catalog endpoints**. Ownership
-work remains deferred until personal-resource domains exist; a database role
-constraint remains an optional future migration.
+Status: **implemented for catalog endpoints and favorites**. Favorites establish
+the first service-scoped ownership model. Other personal-resource ownership and
+a database role constraint remain deferred.
 
 ## 1. Executive recommendation
 
@@ -16,8 +16,9 @@ sufficient. A roles table, granular permissions, ABAC, CASL, a global auth guard
 and a new authorization dependency would add complexity without solving a
 current requirement.
 
-The current code enforces this target policy: catalog reads are public and every
-existing catalog mutation requires `ADMIN`.
+The current code enforces this target policy: catalog reads are public, every
+catalog mutation requires `ADMIN`, and favorite routes require an active user
+while scoping every operation to `user.id` from Passport.
 
 ## 2. Baseline repository diagnosis
 
@@ -182,6 +183,9 @@ means the resource is catalog data, not user-owned data.
 | `POST` | `/api/auth/register` | Public | None | None | Server assigns the default user role. |
 | `POST` | `/api/auth/login` | Public | None | None | Returns JWT after credential and active-status checks. |
 | `GET` | `/api/auth/check-status` | Authenticated | Self | `@Auth()` + `@GetUser()` | Already enforced; returns the authenticated principal only. |
+| `GET` | `/api/favorites` | Authenticated | Self | `@Auth()` + `@GetUser('id')` | Optional `productId`; service filters by authenticated user. |
+| `PUT` | `/api/favorites/:productId` | Authenticated | Self | `@Auth()` + `@GetUser('id')` | Idempotent create/restore; client cannot select owner. |
+| `DELETE` | `/api/favorites/:productId` | Authenticated | Self | `@Auth()` + `@GetUser('id')` | Idempotent soft delete scoped by user and product. |
 | `POST` | `/api/brands` | Admin | None | `@Auth(ADMIN)` | Catalog mutation. |
 | `GET` | `/api/brands` | Public | None | None | Public catalog discovery. |
 | `GET` | `/api/brands/:id` | Public | None | None | Public catalog detail. |
@@ -285,6 +289,10 @@ when their contracts are designed.
   execution. Credentials and connection details must not be committed or logged.
 
 ### Stage 4 — Add ownership with each personal-resource domain
+
+Favorites completed this stage with controller-derived `user.id` and
+service-level `(userId, productId)` scoping. Future comparisons or conversations
+must reuse this ownership pattern instead of the unused generic ownership guard.
 
 - **Objective:** enforce per-user isolation when favorites, comparisons, or
   conversations are actually implemented.
