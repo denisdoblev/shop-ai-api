@@ -10,6 +10,7 @@ import { configureApplication } from '../src/config';
 import { clearTestDatabase } from '../src/config/e2e-database.config';
 
 const TABLES_TO_CLEAR = [
+  'product_favorites',
   'product_prices',
   'product_specifications',
   'product_images',
