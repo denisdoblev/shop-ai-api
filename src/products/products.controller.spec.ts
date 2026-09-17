@@ -1,5 +1,7 @@
 import { ProductsController } from './products.controller';
+import { ProductSearchService } from './product-search.service';
 import { ProductsService } from './products.service';
+import { ProductSearchSort } from './dto';
 
 describe('ProductsController', () => {
   const productsService = {
@@ -9,8 +11,10 @@ describe('ProductsController', () => {
     update: jest.fn(),
     remove: jest.fn(),
   };
+  const productSearchService = { search: jest.fn() };
   const controller = new ProductsController(
     productsService as unknown as ProductsService,
+    productSearchService as unknown as ProductSearchService,
   );
 
   beforeEach(() => jest.clearAllMocks());
@@ -47,5 +51,18 @@ describe('ProductsController', () => {
       name: 'Updated',
     });
     expect(productsService.remove).toHaveBeenCalledWith('product-id');
+  });
+
+  it('delegates faceted search', async () => {
+    const query = {
+      limit: 20,
+      offset: 0,
+      sort: ProductSearchSort.RELEVANCE,
+    };
+    productSearchService.search.mockResolvedValue({ items: [] });
+
+    await controller.search(query);
+
+    expect(productSearchService.search).toHaveBeenCalledWith(query);
   });
 });

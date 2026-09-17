@@ -28,14 +28,20 @@ import { ValidRoles } from '../auth/interfaces';
 import {
   CreateProductDto,
   ProductQueryDto,
+  ProductSearchQueryDto,
+  ProductSearchResponseDto,
   ProductResponseDto,
   UpdateProductDto,
 } from './dto';
+import { ProductSearchService } from './product-search.service';
 
 @ApiTags('products')
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly productSearchService: ProductSearchService,
+  ) {}
 
   @Post()
   @Auth(ValidRoles.ADMIN)
@@ -56,6 +62,16 @@ export class ProductsController {
   @ApiBadRequestResponse({ description: 'Invalid query parameters' })
   findAll(@Query() query: ProductQueryDto): Promise<ProductResponseDto[]> {
     return this.productsService.findAll(query);
+  }
+
+  @Get('search')
+  @ApiOperation({ summary: 'Search products with facets and pagination' })
+  @ApiOkResponse({ type: ProductSearchResponseDto })
+  @ApiBadRequestResponse({ description: 'Invalid search parameters' })
+  search(
+    @Query() query: ProductSearchQueryDto,
+  ): Promise<ProductSearchResponseDto> {
+    return this.productSearchService.search(query);
   }
 
   @Get(':id')

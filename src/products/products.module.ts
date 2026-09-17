@@ -15,6 +15,7 @@ import { ProductSpecificationsController } from './product-specifications/produc
 import { ProductSpecificationsService } from './product-specifications/product-specifications.service';
 import { ProductPricesController } from './product-prices/product-prices.controller';
 import { ProductPricesService } from './product-prices/product-prices.service';
+import { ProductSearchService } from './product-search.service';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { ProductPricesService } from './product-prices/product-prices.service';
   ],
   providers: [
     ProductsService,
+    ProductSearchService,
     ProductImagesService,
     ProductSpecificationsService,
     ProductPricesService,
