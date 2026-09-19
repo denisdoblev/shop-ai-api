@@ -41,6 +41,45 @@ lookup index, and a partial unique index on active `(user_id, product_id)`.
 The expansion-only migration preserves existing data. Its `down` path removes
 only this table and its constraints and indexes.
 
+## RAG storage
+
+RAG storage requires PostgreSQL 17 and pgvector. The Compose development service
+uses `pgvector/pgvector:pg17`. Migration
+`1789738394056-EnableVectorExtension.ts` runs `CREATE EXTENSION IF NOT EXISTS
+vector`; its rollback intentionally leaves the extension installed because it
+may be shared or may have existed before this application.
+
+The later expansion-only migration
+`1789739751921-CreateRagTables.ts` creates two tables without modifying catalog
+tables or existing data:
+
+- `rag_documents` belongs to exactly one `products` row through a restrictive
+  foreign key. It records the PDF name and provider-independent source URI,
+  SHA-256 content hash, MIME type, asynchronous processing status and error,
+  optional page/file metadata, and object-shaped JSON metadata. Active hashes
+  are unique per product; soft-deleting a document permits the hash to be reused.
+- `rag_chunks` belongs to exactly one document through a restrictive foreign
+  key. It records non-empty text, a non-negative chunk index, optional valid page
+  range/section/token count, object-shaped JSON metadata, and an optional
+  embedding. Active chunk indexes are unique per document; soft-deleting a chunk
+  permits the index to be reused. Embedding, non-empty model name, and embedding
+  timestamp must either all be present or all be absent.
+
+`rag_chunks.embedding` is currently `vector` without a fixed dimension. This
+allows validation with arbitrary dimensions but intentionally prevents creating
+an ANN index: neither HNSW nor IVFFlat is part of this migration. After choosing
+an embedding model, a separate migration must validate all existing embeddings
+against the chosen model and dimension, convert the column to `vector(N)`, and
+create the agreed index and metric (expected to be HNSW with cosine distance).
+
+Rollback removes the chunk foreign key and indexes, then `rag_chunks`, followed
+by the document foreign key and indexes and `rag_documents`. It does not modify
+`products` or remove the `vector` extension.
+
+PostgreSQL 15 development databases are disposable for this transition. Recreate
+them as empty PostgreSQL 17 databases and apply the complete migration chain;
+there is no `pg_upgrade` or data-transfer path in scope.
+
 ## Primary keys and nullability
 
 Every table uses an explicitly non-null UUID primary key:

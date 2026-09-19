@@ -10,6 +10,8 @@ import { configureApplication } from '../src/config';
 import { clearTestDatabase } from '../src/config/e2e-database.config';
 
 const TABLES_TO_CLEAR = [
+  'rag_chunks',
+  'rag_documents',
   'product_favorites',
   'product_prices',
   'product_specifications',

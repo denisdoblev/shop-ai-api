@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:15.3
+    image: pgvector/pgvector:pg17
     restart: always
     ports:
       - "5432:5432"
@@ -36,6 +36,10 @@ services:
       SWAGGER_TITLE: ${SWAGGER_TITLE}
       SWAGGER_DESCRIPTION: ${SWAGGER_DESCRIPTION}
       SWAGGER_VERSION: ${SWAGGER_VERSION}
+      EMBEDDINGS_PROVIDER: ${EMBEDDINGS_PROVIDER:-ollama}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-embeddinggemma}
+      OLLAMA_EMBEDDING_TIMEOUT_MS: ${OLLAMA_EMBEDDING_TIMEOUT_MS:-30000}
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules
