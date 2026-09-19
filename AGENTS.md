@@ -10,6 +10,7 @@ This repository is a NestJS REST API for a product catalog and AI-powered produc
 - Keep controllers thin. Put business workflows in injectable services.
 - Constructor injection is standard. Injecting TypeORM `Repository<Entity>` directly is valid; do not add a custom repository or architectural layer without demonstrated need.
 - Put reusable application concerns in `src/common/`, configuration factories in `src/config/`, and datasource/migrations in `src/db/`.
+- Keep AI capabilities under the `src/ai/` aggregate: chat orchestration, RAG workflows and persistence, and LLM integration live there without exposing HTTP handlers until their contracts exist.
 - Do not introduce CQRS, use-case classes, domain events, or another abstraction merely for symmetry.
 
 ## Important directories
@@ -17,6 +18,7 @@ This repository is a NestJS REST API for a product catalog and AI-powered produc
 | Path | Purpose |
 | --- | --- |
 | `src/auth/` | Reference domain for module, controller, service, DTO, entity, guards, strategies, adapters, and unit tests |
+| `src/ai/` | AI aggregate containing chat wiring, RAG storage/workflow modules, and LLM integration |
 | `src/common/` | Shared DTOs, entities, decorators, and types |
 | `src/config/` | Application, environment, logging, Swagger, and TypeORM configuration |
 | `src/db/` | TypeORM CLI datasource and migrations |

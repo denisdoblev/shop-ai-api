@@ -2,6 +2,10 @@
 
 REST API for an AI shopping copilot, built with NestJS, TypeScript, TypeORM, PostgreSQL, pnpm, and Jest.
 
+Local and deployed databases require PostgreSQL 17 with the pgvector extension
+available. The provided Compose service uses `pgvector/pgvector:pg17`; migrations
+install the `vector` extension before creating any vector-backed tables.
+
 ## Local setup
 
 ```bash
@@ -25,8 +29,27 @@ Configuration is validated at startup. The required variable names are documente
 - `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME`
 - `TEST_DB_NAME` for the exclusive E2E database
 - `SWAGGER_TITLE`, `SWAGGER_DESCRIPTION`, `SWAGGER_VERSION`
+- `EMBEDDINGS_PROVIDER`, `OLLAMA_BASE_URL`, `OLLAMA_EMBEDDING_MODEL`,
+  `OLLAMA_EMBEDDING_TIMEOUT_MS`
 
 Do not commit `.env` or real secret values.
+
+### Local embeddings
+
+Embeddings use Ollama and the 768-dimension `embeddinggemma` model. Install
+Ollama separately, start it, and download the model before exercising the
+internal embeddings service:
+
+```bash
+ollama pull embeddinggemma
+```
+
+The application does not contact Ollama during bootstrap. Authentication and
+catalog features remain available when Ollama is stopped; an embedding request
+then fails with a provider-neutral error. The default local URL is
+`http://localhost:11434`. Compose passes these settings to `api` and defaults
+its host URL to `http://host.docker.internal:11434`; it intentionally does not
+run an Ollama container.
 
 ### E2E database safety
 
@@ -166,6 +189,30 @@ pnpm run migration:run
 pnpm run migration:revert
 ```
 
+The RAG storage schema is expansion-only: `rag_documents` stores PDF ingestion
+state per product and `rag_chunks` stores text plus an optional, dimensionless
+`vector` embedding. Although the internal provider returns 768-value
+EmbeddingGemma vectors, `rag_chunks.embedding` remains `vector` without an HNSW
+or IVFFlat index until persistence and retrieval are connected. See
+[`docs/database-schema.md`](docs/database-schema.md) for the constraints and
+planned dimensionalization step.
+
+The application groups its AI foundation under `src/ai/`. `AiModule` composes
+chat orchestration, the RAG ingestion/chunking/embeddings/retrieval modules, and
+the LLM module. RAG owns the existing `rag_documents` and `rag_chunks` entities
+and registers their TypeORM repositories. `EmbeddingsService` delegates queries
+and document batches to a replaceable provider; the initial Ollama adapter does
+not expose an HTTP endpoint or persist vectors. `ChatController` has the
+`ai/chat` base path but no handlers, so there is still no public AI API or
+OpenAPI contract. Real ingestion, chunking, persistence, retrieval, and LLM
+behavior will be introduced with their implementations.
+
+Existing PostgreSQL 15 development databases are considered disposable for this
+upgrade. Stop the old service, discard its local `postgres/` storage only after
+confirming it contains no needed data, start the PostgreSQL 17 service, and run
+the full migration chain against the empty database. Do not use `pg_upgrade` or
+copy PG15 data files into the PG17 data directory.
+
 ## Database seeding
 
 The development catalog seed is a standalone Nest application: it does not start
@@ -202,6 +249,7 @@ pnpm run build
 | Path                       | Purpose                                                               |
 | -------------------------- | --------------------------------------------------------------------- |
 | `src/auth/`                | Authentication domain                                                 |
+| `src/ai/`                  | AI aggregate: chat, RAG workflows/storage, and LLM wiring             |
 | `src/brands/`              | Brand catalog domain and CRUD API                                     |
 | `src/categories/`          | Hierarchical category domain and CRUD API                             |
 | `src/attributes/`          | Reusable typed attribute domain and CRUD API                          |

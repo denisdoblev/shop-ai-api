@@ -8,6 +8,8 @@ This document is the source of truth for conventions established by the reposito
 - **Explicit:** Controllers remain thin; business workflows belong in injectable services (`src/auth/auth.controller.ts`, `src/auth/auth.service.ts`).
 - **Explicit:** Injecting TypeORM `Repository<Entity>` directly is the established repository/data-access pattern. A custom repository layer is optional, not required (`src/auth/auth.service.ts`, `AGENTS.md`).
 - **Strong inferred:** Shared application code belongs in `src/common/`, configuration factories in `src/config/`, and datasource/migrations in `src/db/`.
+- **Explicit:** AI capabilities belong to the `src/ai/` aggregate. `AiModule` composes chat orchestration, RAG persistence/workflow modules, and LLM integration; RAG entities live under `src/ai/rag/entities/`.
+- **Explicit:** The AI aggregate has no public handler or real ingestion, chunking, persistence, retrieval, or LLM behavior yet. Embeddings are the exception: `EmbeddingsService` depends on the provider-neutral `EMBEDDING_PROVIDER` token, and `EmbeddingsModule` selects the configured adapter. The Ollama adapter owns EmbeddingGemma input formatting and response validation. PostgreSQL vector support and the RAG storage schema already exist, but `rag_chunks.embedding` remains dimensionless and unindexed until persistence/retrieval are connected.
 - **Not established in the current codebase:** CQRS, domain events, use-case classes, or a formal hexagonal layer structure.
 
 ## 2. File and Folder Naming
@@ -33,6 +35,7 @@ This document is the source of truth for conventions established by the reposito
 ## 4. NestJS Conventions
 
 - **Strong inferred:** Modules register controllers/providers and entity repositories with `TypeOrmModule.forFeature()`.
+- **Explicit:** `RetrievalModule` and `LlmModule` export their services for chat composition. AI workflow services otherwise remain private to their modules, and shared module imports rely on Nest module reuse rather than provider redeclaration.
 - **Strong inferred:** Dependencies use constructor injection. Interface-typed dependencies use an explicit provider token (`BcryptAdapter` for `HashAdapter`).
 - **Explicit:** `configureApplication()` owns the global `/api` prefix and `ValidationPipe`; production and e2e bootstrap both call it (`src/config/application.config.ts`, `src/main.ts`, `test/test-utils.ts`).
 - **Strong inferred:** Composite decorators package authentication/authorization behavior. `@Auth()` runs Passport JWT before role checks; `@GetUser()` accesses the authenticated principal.
@@ -92,6 +95,7 @@ This document is the source of truth for conventions established by the reposito
 ## 10. Configuration and Environment
 
 - **Explicit:** Global `ConfigModule` validates environment through Joi. Database, Swagger, `NODE_ENV`, and `JWT_SECRET` values are required; `PORT` defaults to 3000.
+- **Explicit:** Embedding configuration is validated at startup and defaults to Ollama at `http://localhost:11434`, model `embeddinggemma`, and a 30000 ms timeout. Provider connectivity is lazy and is never checked during bootstrap.
 - **Strong inferred:** Runtime code consumes `ConfigService`; standalone TypeORM CLI setup loads dotenv directly.
 - **Explicit:** `ProcessEnv` declarations describe raw environment values as strings. Parse/coerce numeric values at configuration boundaries.
 - **Explicit:** `.env` files are ignored and real secrets must never appear in source or documentation.

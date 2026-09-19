@@ -14,5 +14,9 @@ declare namespace NodeJS {
     SWAGGER_TITLE: string;
     SWAGGER_DESCRIPTION: string;
     SWAGGER_VERSION: string;
+    EMBEDDINGS_PROVIDER?: string;
+    OLLAMA_BASE_URL?: string;
+    OLLAMA_EMBEDDING_MODEL?: string;
+    OLLAMA_EMBEDDING_TIMEOUT_MS?: string;
   }
 }

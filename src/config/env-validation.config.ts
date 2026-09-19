@@ -16,5 +16,17 @@ export const envValidationSchema = databaseEnvValidationSchema.concat(
     SWAGGER_TITLE: Joi.string().required(),
     SWAGGER_DESCRIPTION: Joi.string().required(),
     SWAGGER_VERSION: Joi.string().required(),
+    EMBEDDINGS_PROVIDER: Joi.string().valid('ollama').default('ollama'),
+    OLLAMA_BASE_URL: Joi.string()
+      .uri({ scheme: ['http', 'https'] })
+      .default('http://localhost:11434'),
+    OLLAMA_EMBEDDING_MODEL: Joi.string()
+      .trim()
+      .min(1)
+      .default('embeddinggemma'),
+    OLLAMA_EMBEDDING_TIMEOUT_MS: Joi.number()
+      .integer()
+      .positive()
+      .default(30_000),
   }),
 );

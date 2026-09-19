@@ -13,6 +13,7 @@ import { CategoriesModule } from './categories/categories.module';
 import { AttributesModule } from './attributes/attributes.module';
 import { ProductsModule } from './products/products.module';
 import { FavoritesModule } from './favorites/favorites.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { FavoritesModule } from './favorites/favorites.module';
     AttributesModule,
     ProductsModule,
     FavoritesModule,
+    AiModule,
   ],
   controllers: [],
   providers: [],
