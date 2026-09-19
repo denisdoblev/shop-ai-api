@@ -9,7 +9,7 @@ This document is the source of truth for conventions established by the reposito
 - **Explicit:** Injecting TypeORM `Repository<Entity>` directly is the established repository/data-access pattern. A custom repository layer is optional, not required (`src/auth/auth.service.ts`, `AGENTS.md`).
 - **Strong inferred:** Shared application code belongs in `src/common/`, configuration factories in `src/config/`, and datasource/migrations in `src/db/`.
 - **Explicit:** AI capabilities belong to the `src/ai/` aggregate. `AiModule` composes chat orchestration, RAG persistence/workflow modules, and LLM integration; RAG entities live under `src/ai/rag/entities/`.
-- **Explicit:** The AI aggregate has no public handler or real ingestion, chunking, persistence, retrieval, or LLM behavior yet. Embeddings are the exception: `EmbeddingsService` depends on the provider-neutral `EMBEDDING_PROVIDER` token, and `EmbeddingsModule` selects the configured adapter. The Ollama adapter owns EmbeddingGemma input formatting and response validation. PostgreSQL vector support and the RAG storage schema already exist, but `rag_chunks.embedding` remains dimensionless and unindexed until persistence/retrieval are connected.
+- **Explicit:** The AI aggregate has no public handler or real ingestion, chunking, chat, or LLM behavior yet. Embeddings and retrieval are internal exceptions: `EmbeddingsService` depends on the provider-neutral `EMBEDDING_PROVIDER` token, and `EmbeddingsModule` selects the configured adapter. The Ollama adapter owns EmbeddingGemma input formatting and response validation. `RetrievalService` performs top-K pgvector cosine search over ready, active documents and model-compatible 768-dimensional embeddings, with an optional product filter. It returns plain retrieval results without exposing stored vectors.
 - **Not established in the current codebase:** CQRS, domain events, use-case classes, or a formal hexagonal layer structure.
 
 ## 2. File and Folder Naming
@@ -63,8 +63,10 @@ This document is the source of truth for conventions established by the reposito
 - **Explicit:** The initial users migration targets an empty database. It does not upgrade an existing numeric-ID `users` table.
 - **Explicit:** Catalog relationships use named foreign keys with `ON DELETE RESTRICT`.
   Product filters use query builders and partial indexes, including typed EAV
-  indexes. Standalone seeds run all writes through one `EntityManager` transaction.
-  Locking remains unestablished.
+  indexes. RAG similarity search uses the cosine `<=>` operator and the partial
+  HNSW `vector_cosine_ops` index on active non-null embeddings. Standalone seeds
+  run all writes through one `EntityManager` transaction. Locking remains
+  unestablished.
 
 ## 7. Validation and Error Handling
 
@@ -79,6 +81,7 @@ This document is the source of truth for conventions established by the reposito
 - **Strong inferred:** Controller tests use `Test.createTestingModule`; focused services/adapters/strategies use direct construction with typed Jest mocks.
 - **Strong inferred:** Reset mocks between tests and assert both outputs/errors and collaborator calls. Authentication tests assert safe response shapes and absence of password.
 - **Explicit:** E2e applications call the same shared configuration as production, including `/api` and validation. Database cleanup is centralized in `test/test-utils.ts`.
+- **Explicit:** Integration tests require both local Ollama and the migrated safe `_test` database; their Jest configuration applies the same environment guard as E2E before loading application modules.
 - **Explicit:** Destructive e2e cleanup requires `NODE_ENV=test`, an explicit
   `TEST_DB_NAME` ending in `_test`, and a TypeORM datasource targeting that exact
   database. The test database must be pre-existing and migrated; unavailable

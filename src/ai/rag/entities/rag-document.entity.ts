@@ -25,7 +25,7 @@ import { RagDocumentStatus } from './rag-document-status.enum';
     where: 'deleted_at IS NULL',
   },
 )
-@Check('chk_rag_documents_source_type', "source_type IN ('pdf')")
+@Check('chk_rag_documents_source_type', "source_type IN ('pdf', 'text')")
 @Check('chk_rag_documents_content_hash', "content_hash ~ '^[0-9A-Fa-f]{64}$'")
 @Check(
   'chk_rag_documents_status',
@@ -61,8 +61,8 @@ export class RagDocument extends BaseEntity {
   })
   sourceType!: RagDocumentSourceType;
 
-  @Column({ type: 'text' })
-  sourceUri!: string;
+  @Column({ type: 'text', nullable: true })
+  sourceUri!: string | null;
 
   @Column({ type: 'varchar', length: 100, default: 'application/pdf' })
   mimeType!: string;

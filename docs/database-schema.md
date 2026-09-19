@@ -54,7 +54,7 @@ The later expansion-only migration
 tables or existing data:
 
 - `rag_documents` belongs to exactly one `products` row through a restrictive
-  foreign key. It records the PDF name and provider-independent source URI,
+  foreign key. It records the source name and provider-independent source URI,
   SHA-256 content hash, MIME type, asynchronous processing status and error,
   optional page/file metadata, and object-shaped JSON metadata. Active hashes
   are unique per product; soft-deleting a document permits the hash to be reused.
@@ -65,16 +65,22 @@ tables or existing data:
   permits the index to be reused. Embedding, non-empty model name, and embedding
   timestamp must either all be present or all be absent.
 
-`rag_chunks.embedding` is currently `vector` without a fixed dimension. This
-allows validation with arbitrary dimensions but intentionally prevents creating
-an ANN index: neither HNSW nor IVFFlat is part of this migration. After choosing
-an embedding model, a separate migration must validate all existing embeddings
-against the chosen model and dimension, convert the column to `vector(N)`, and
-create the agreed index and metric (expected to be HNSW with cosine distance).
+`1789847112362-AllowTextRagDocuments.ts` expands `source_type` to `pdf` and
+`text`, and makes `source_uri` nullable for honest manual-text sources. Its
+rollback refuses to contract the schema while any text source or null URI
+exists.
 
-Rollback removes the chunk foreign key and indexes, then `rag_chunks`, followed
-by the document foreign key and indexes and `rag_documents`. It does not modify
-`products` or remove the `vector` extension.
+`1789847117759-DimensionRagChunkEmbeddings.ts` first rejects any existing
+non-null vector whose dimension is not 768, then converts `embedding` to
+`vector(768)`. It creates the partial
+`idx_rag_chunks_embedding_hnsw_active` index with HNSW and
+`vector_cosine_ops`, limited to non-deleted rows with an embedding. Rollback
+drops that index and widens the column back to dimensionless `vector` without
+rewriting or deleting embedding values.
+
+Rollback of the original table migration removes the chunk foreign key and
+indexes, then `rag_chunks`, followed by the document foreign key and indexes and
+`rag_documents`. It does not modify `products` or remove the `vector` extension.
 
 PostgreSQL 15 development databases are disposable for this transition. Recreate
 them as empty PostgreSQL 17 databases and apply the complete migration chain;

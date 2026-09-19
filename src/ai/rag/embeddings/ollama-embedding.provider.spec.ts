@@ -1,11 +1,9 @@
 import { EmbeddingProviderError } from './embedding-provider.error';
-import {
-  OLLAMA_EMBEDDING_DIMENSIONS,
-  OllamaEmbeddingProvider,
-} from './ollama-embedding.provider';
+import { EMBEDDING_DIMENSIONS } from './embedding.constants';
+import { OllamaEmbeddingProvider } from './ollama-embedding.provider';
 
 const validVector = (value = 0.5): number[] =>
-  Array.from({ length: OLLAMA_EMBEDDING_DIMENSIONS }, () => value);
+  Array.from({ length: EMBEDDING_DIMENSIONS }, () => value);
 
 describe('OllamaEmbeddingProvider', () => {
   const options = {

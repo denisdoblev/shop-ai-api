@@ -1,5 +1,6 @@
 import { Check, Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
+import { EMBEDDING_DIMENSIONS } from '../embeddings/embedding.constants';
 import { RagDocument } from './rag-document.entity';
 
 @Entity('rag_chunks')
@@ -14,6 +15,7 @@ import { RagDocument } from './rag-document.entity';
     where: 'deleted_at IS NULL',
   },
 )
+@Index('idx_rag_chunks_embedding_hnsw_active', { synchronize: false })
 @Check('chk_rag_chunks_content_not_empty', "btrim(content) <> ''")
 @Check('chk_rag_chunks_chunk_index', 'chunk_index >= 0')
 @Check('chk_rag_chunks_page_start', 'page_start IS NULL OR page_start > 0')
@@ -62,7 +64,7 @@ export class RagChunk extends BaseEntity {
   @Column({ type: 'jsonb', default: () => "'{}'::jsonb" })
   metadata!: Record<string, unknown>;
 
-  @Column({ type: 'vector', nullable: true })
+  @Column({ type: 'vector', length: EMBEDDING_DIMENSIONS, nullable: true })
   embedding!: number[] | null;
 
   @Column({ type: 'varchar', length: 150, nullable: true })

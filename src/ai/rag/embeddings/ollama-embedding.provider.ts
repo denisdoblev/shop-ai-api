@@ -1,11 +1,10 @@
 import { EmbeddingProviderError } from './embedding-provider.error';
+import { EMBEDDING_DIMENSIONS } from './embedding.constants';
 import {
   EmbeddingInput,
   EmbeddingProvider,
   EmbeddingVector,
 } from './embedding-provider.interface';
-
-export const OLLAMA_EMBEDDING_DIMENSIONS = 768;
 
 export interface OllamaEmbeddingProviderOptions {
   baseUrl: string;
@@ -41,7 +40,7 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
           body: JSON.stringify({
             model: this.options.model,
             input: formattedInputs,
-            dimensions: OLLAMA_EMBEDDING_DIMENSIONS,
+            dimensions: EMBEDDING_DIMENSIONS,
             truncate: false,
           }),
           signal: controller.signal,
@@ -135,7 +134,7 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
     if (!Array.isArray(value)) {
       throw new EmbeddingProviderError(
         'invalid_response',
-        `Embedding provider must return ${OLLAMA_EMBEDDING_DIMENSIONS} finite numbers per vector`,
+        `Embedding provider must return ${EMBEDDING_DIMENSIONS} finite numbers per vector`,
       );
     }
 
@@ -144,17 +143,17 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
       (item: unknown): item is number =>
         typeof item === 'number' && Number.isFinite(item),
     );
-    if (values.length !== OLLAMA_EMBEDDING_DIMENSIONS || !hasValidValues) {
+    if (values.length !== EMBEDDING_DIMENSIONS || !hasValidValues) {
       throw new EmbeddingProviderError(
         'invalid_response',
-        `Embedding provider must return ${OLLAMA_EMBEDDING_DIMENSIONS} finite numbers per vector`,
+        `Embedding provider must return ${EMBEDDING_DIMENSIONS} finite numbers per vector`,
       );
     }
 
     return {
       values,
       model: this.options.model,
-      dimensions: OLLAMA_EMBEDDING_DIMENSIONS,
+      dimensions: EMBEDDING_DIMENSIONS,
     };
   }
 }

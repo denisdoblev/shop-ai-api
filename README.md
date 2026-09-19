@@ -51,15 +51,19 @@ then fails with a provider-neutral error. The default local URL is
 its host URL to `http://host.docker.internal:11434`; it intentionally does not
 run an Ollama container.
 
-The Ollama integration test is separate from the normal unit and database E2E
-suites. With Ollama running locally and `embeddinggemma` installed, run:
+The embedding and RAG retrieval integration tests are separate from the normal
+unit and HTTP E2E suites. They require Ollama with `embeddinggemma` plus the
+safe, migrated PostgreSQL test database:
 
 ```bash
+pnpm run docker:db
+pnpm run db:test:setup
 pnpm run test:integration
 ```
 
-This test calls `http://localhost:11434` directly. `pnpm test` does not require
-Ollama.
+These tests call `http://localhost:11434` directly and enforce the same
+`TEST_DB_NAME` `_test` safeguards as E2E. `pnpm test` does not require Ollama or
+PostgreSQL.
 
 ### E2E database safety
 
@@ -203,23 +207,37 @@ pnpm run migration:run
 pnpm run migration:revert
 ```
 
-The RAG storage schema is expansion-only: `rag_documents` stores PDF ingestion
-state per product and `rag_chunks` stores text plus an optional, dimensionless
-`vector` embedding. Although the internal provider returns 768-value
-EmbeddingGemma vectors, `rag_chunks.embedding` remains `vector` without an HNSW
-or IVFFlat index until persistence and retrieval are connected. See
-[`docs/database-schema.md`](docs/database-schema.md) for the constraints and
-planned dimensionalization step.
+The RAG storage schema is expansion-only: `rag_documents` stores PDF or manual
+text ingestion state per product; text sources may have a null `sourceUri`.
+`rag_chunks.embedding` is `vector(768)` and has a partial HNSW cosine index for
+active, embedded chunks. See [`docs/database-schema.md`](docs/database-schema.md)
+for the constraints and rollback safeguards.
 
 The application groups its AI foundation under `src/ai/`. `AiModule` composes
 chat orchestration, the RAG ingestion/chunking/embeddings/retrieval modules, and
 the LLM module. RAG owns the existing `rag_documents` and `rag_chunks` entities
 and registers their TypeORM repositories. `EmbeddingsService` delegates queries
-and document batches to a replaceable provider; the initial Ollama adapter does
-not expose an HTTP endpoint or persist vectors. `ChatController` has the
+and document batches to a replaceable provider. The internal `RetrievalService`
+embeds a query once, searches ready documents with cosine distance, optionally
+filters by product, and returns the requested top K chunks without their stored
+vectors. It excludes soft-deleted chunks, documents, and products, null
+embeddings, and embeddings from another model. The initial Ollama adapter and
+retrieval flow do not expose an HTTP endpoint. `ChatController` has the
 `ai/chat` base path but no handlers, so there is still no public AI API or
-OpenAPI contract. Real ingestion, chunking, persistence, retrieval, and LLM
-behavior will be introduced with their implementations.
+OpenAPI contract. Real ingestion, chunking, persistence, chat, and LLM behavior
+remain future work.
+
+The internal retrieval contract is:
+
+```ts
+retrieve(
+  query: string,
+  options: { topK: number; productId?: string },
+): Promise<RetrievedChunk[]>;
+```
+
+`topK` must be a positive integer. Results contain chunk/document/product IDs,
+content, chunk index, metadata, and `similarity = 1 - cosineDistance`.
 
 Existing PostgreSQL 15 development databases are considered disposable for this
 upgrade. Stop the old service, discard its local `postgres/` storage only after
