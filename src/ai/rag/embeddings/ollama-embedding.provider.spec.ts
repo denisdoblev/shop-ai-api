@@ -27,6 +27,11 @@ describe('OllamaEmbeddingProvider', () => {
     jest.restoreAllMocks();
   });
 
+  it('returns an empty batch without making a request', async () => {
+    await expect(provider.embed([])).resolves.toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('sends the model options and formats query and document batches', async () => {
     fetchMock.mockResolvedValue(
       new Response(

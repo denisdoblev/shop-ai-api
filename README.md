@@ -51,6 +51,16 @@ then fails with a provider-neutral error. The default local URL is
 its host URL to `http://host.docker.internal:11434`; it intentionally does not
 run an Ollama container.
 
+The Ollama integration test is separate from the normal unit and database E2E
+suites. With Ollama running locally and `embeddinggemma` installed, run:
+
+```bash
+pnpm run test:integration
+```
+
+This test calls `http://localhost:11434` directly. `pnpm test` does not require
+Ollama.
+
 ### E2E database safety
 
 E2E tests destructively clear their data between cases and therefore require a
@@ -58,19 +68,23 @@ separate, pre-existing PostgreSQL database. `TEST_DB_NAME` must differ from
 `DB_NAME` and end with `_test`; the default documented name is
 `shop_ai_api_test`.
 
-Create the database once and apply the migrations before running the suite. For
-the example local configuration:
+Start PostgreSQL and run the idempotent test-database setup before the suite:
 
 ```bash
-createdb -h localhost -U postgres shop_ai_api_test
-DB_NAME=shop_ai_api_test NODE_ENV=test pnpm run migration:run
+pnpm run docker:db
+pnpm run db:test:setup
 pnpm run test:e2e
 ```
 
-The suite does not create the database or run migrations. It fails before Nest
-or TypeORM initialization when the test database configuration is missing or
-unsafe, and database connection or cleanup errors fail the suite instead of
-being ignored.
+`db:test:setup` reads the existing database connection settings, validates
+`TEST_DB_NAME` with the same safety rules as the E2E suite, creates that database
+only when it does not exist, and applies pending TypeORM migrations. It is safe
+to run repeatedly and never drops or recreates an existing database.
+
+The E2E suite itself still does not create the database or run migrations. It
+fails before Nest or TypeORM initialization when the test database configuration
+is missing or unsafe, and database connection or cleanup errors fail the suite
+instead of being ignored.
 
 ## Authentication API
 
@@ -257,7 +271,7 @@ pnpm run build
 | `src/common/`              | Shared DTOs, entities, decorators, and types                          |
 | `src/config/`              | Application, environment, logging, Swagger, and TypeORM configuration |
 | `src/db/`                  | TypeORM datasource, migrations, and standalone seeds                  |
-| `test/`                    | End-to-end tests and shared test bootstrap                            |
+| `test/`                    | Integration/E2E tests and shared test bootstrap                        |
 | `docs/conventions.md`      | Engineering conventions and implementation recipes                    |
 | `docs/authentication-authorization-plan.md` | Security diagnosis, access matrix, and implementation record |
 | `docs/database-schema.md`  | Catalog schema documentation and reference SQL                        |

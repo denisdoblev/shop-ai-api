@@ -30,6 +30,17 @@ describe('EmbeddingsService', () => {
     ]);
   });
 
+  it('rejects when the provider does not return a query vector', async () => {
+    provider.embed.mockResolvedValue([]);
+
+    await expect(service.embedQuery('wireless headphones')).rejects.toThrow(
+      'Embedding provider did not return a query vector',
+    );
+    expect(provider.embed.mock.calls).toEqual([
+      [[{ type: 'query', text: 'wireless headphones' }]],
+    ]);
+  });
+
   it('embeds document batches in their original order', async () => {
     provider.embed.mockResolvedValue([vector(1), vector(2)]);
 
