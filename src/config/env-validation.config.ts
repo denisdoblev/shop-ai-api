@@ -51,6 +51,11 @@ export const envValidationSchema = databaseEnvValidationSchema.concat(
       .integer()
       .positive()
       .default(30_000),
+    LLM_PROVIDER: Joi.string().valid('ollama').default('ollama'),
+    OLLAMA_LLM_MODEL: Joi.string().trim().min(1).default('qwen3:8b'),
+    OLLAMA_LLM_TIMEOUT_MS: Joi.number().integer().positive().default(120_000),
+    RAG_DEFAULT_TOP_K: Joi.number().integer().positive().default(5),
+    RAG_MIN_SIMILARITY: Joi.number().min(-1).max(1).default(0.5),
     RAG_PDF_MAX_FILE_SIZE_BYTES: Joi.number()
       .integer()
       .positive()

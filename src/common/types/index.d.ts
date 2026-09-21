@@ -20,6 +20,11 @@ declare namespace NodeJS {
     OLLAMA_BASE_URL?: string;
     OLLAMA_EMBEDDING_MODEL?: string;
     OLLAMA_EMBEDDING_TIMEOUT_MS?: string;
+    LLM_PROVIDER?: string;
+    OLLAMA_LLM_MODEL?: string;
+    OLLAMA_LLM_TIMEOUT_MS?: string;
+    RAG_DEFAULT_TOP_K?: string;
+    RAG_MIN_SIMILARITY?: string;
     RAG_PDF_MAX_FILE_SIZE_BYTES?: string;
     RAG_PDF_MAX_PAGES?: string;
   }

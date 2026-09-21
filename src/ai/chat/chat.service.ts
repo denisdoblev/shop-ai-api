@@ -1,11 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { LlmService } from '../llm/llm.service';
-import { RetrievalService } from '../rag/retrieval/retrieval.service';
+import { RagService } from '../rag/rag.service';
 
 @Injectable()
 export class ChatService {
-  constructor(
-    private readonly retrievalService: RetrievalService,
-    private readonly llmService: LlmService,
-  ) {}
+  constructor(private readonly ragService: RagService) {}
 }

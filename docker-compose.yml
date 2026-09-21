@@ -40,6 +40,11 @@ services:
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-embeddinggemma}
       OLLAMA_EMBEDDING_TIMEOUT_MS: ${OLLAMA_EMBEDDING_TIMEOUT_MS:-30000}
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+      OLLAMA_LLM_MODEL: ${OLLAMA_LLM_MODEL:-qwen3:8b}
+      OLLAMA_LLM_TIMEOUT_MS: ${OLLAMA_LLM_TIMEOUT_MS:-120000}
+      RAG_DEFAULT_TOP_K: ${RAG_DEFAULT_TOP_K:-5}
+      RAG_MIN_SIMILARITY: ${RAG_MIN_SIMILARITY:-0.50}
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules

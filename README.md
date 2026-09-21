@@ -31,9 +31,16 @@ Configuration is validated at startup. The required variable names are documente
 - `SWAGGER_TITLE`, `SWAGGER_DESCRIPTION`, `SWAGGER_VERSION`
 - `EMBEDDINGS_PROVIDER`, `OLLAMA_BASE_URL`, `OLLAMA_EMBEDDING_MODEL`,
   `OLLAMA_EMBEDDING_TIMEOUT_MS`
+- `LLM_PROVIDER`, `OLLAMA_LLM_MODEL`, `OLLAMA_LLM_TIMEOUT_MS`
+- `RAG_DEFAULT_TOP_K`, `RAG_MIN_SIMILARITY`
 - `RAG_PDF_MAX_FILE_SIZE_BYTES`, `RAG_PDF_MAX_PAGES`
 
 Do not commit `.env` or real secret values.
+
+`pnpm db:seed` additionally requires `SEED_ADMIN_EMAIL` and
+`SEED_ADMIN_PASSWORD` in development and test. The command never seeds an
+administrator in production and never changes an existing user. Use dedicated,
+local-only credentials; see [`docs/database-seeding.md`](docs/database-seeding.md).
 
 In production, `JWT_SECRET` must be at least 32 characters long and randomly
 generated.
@@ -41,16 +48,17 @@ generated.
 ### Local embeddings
 
 Embeddings use Ollama and the 768-dimension `embeddinggemma` model. Install
-Ollama separately, start it, and download the model before exercising the
-internal embeddings service:
+Ollama separately, start it, and download both models before exercising the
+internal RAG services:
 
 ```bash
 ollama pull embeddinggemma
+ollama pull qwen3:8b
 ```
 
 The application does not contact Ollama during bootstrap. Authentication and
-catalog features remain available when Ollama is stopped; an embedding request
-then fails with a provider-neutral error. The default local URL is
+catalog features remain available when Ollama is stopped; an embedding or
+generation request then fails with a provider-neutral error. The default local URL is
 `http://localhost:11434`. Compose passes these settings to `api` and defaults
 its host URL to `http://host.docker.internal:11434`; it intentionally does not
 run an Ollama container.
@@ -66,8 +74,8 @@ pnpm run test:integration
 ```
 
 These tests call `http://localhost:11434` directly and enforce the same
-`TEST_DB_NAME` `_test` safeguards as E2E. `pnpm test` does not require Ollama or
-PostgreSQL.
+`TEST_DB_NAME` `_test` safeguards as E2E. Generation tests also require
+`qwen3:8b`. `pnpm test` does not require Ollama or PostgreSQL.
 
 ### E2E database safety
 
@@ -218,8 +226,8 @@ active, embedded chunks. See [`docs/database-schema.md`](docs/database-schema.md
 for the constraints and rollback safeguards.
 
 The application groups its AI foundation under `src/ai/`. `AiModule` composes
-chat orchestration, the RAG ingestion/chunking/embeddings/retrieval modules, and
-the LLM module. RAG owns the existing `rag_documents` and `rag_chunks` entities.
+chat and RAG; RAG owns ingestion, retrieval, grounded answer orchestration, LLM
+generation, and the existing `rag_documents` and `rag_chunks` entities.
 Administrators can synchronously ingest an in-memory PDF with
 `POST /api/products/:productId/rag-documents`; parsing, page-aware chunking, and
 embedding complete before one transaction persists the ready document and its
@@ -227,11 +235,16 @@ chunks. See [`docs/rag-ingestion.md`](docs/rag-ingestion.md) for limits and
 failure behavior. `EmbeddingsService` delegates queries and document batches to
 a replaceable provider. The internal `RetrievalService`
 embeds a query once, searches ready documents with cosine distance, optionally
-filters by product, and returns the requested top K chunks without their stored
-vectors. It excludes soft-deleted chunks, documents, and products, null
-embeddings, and embeddings from another model. The initial Ollama adapter and
-retrieval flow do not expose an HTTP endpoint. `ChatController` has the
-`ai/chat` base path but no handlers; chat and LLM behavior remain future work.
+filters by product, and returns the requested top K chunks with document, page,
+and section source fields but without stored vectors. It excludes soft-deleted
+chunks, documents, and products, null embeddings, and embeddings from another
+model. `RagService` filters those results by configured similarity, returns
+deterministic insufficiency without generation when none remain, or builds a
+grounded prompt and delegates to the provider-neutral `LlmService`. The Ollama
+LLM adapter uses non-streaming `qwen3:8b` with thinking disabled. See
+[`docs/rag-generation.md`](docs/rag-generation.md). This internal flow does not
+expose an HTTP endpoint; `ChatController` retains the `ai/chat` base path without
+handlers.
 
 The internal retrieval contract is:
 
@@ -243,7 +256,8 @@ retrieve(
 ```
 
 `topK` must be a positive integer. Results contain chunk/document/product IDs,
-content, chunk index, metadata, and `similarity = 1 - cosineDistance`.
+the document name, content, chunk index, page range, section, metadata, and
+`similarity = 1 - cosineDistance`.
 
 Existing PostgreSQL 15 development databases are considered disposable for this
 upgrade. Stop the old service, discard its local `postgres/` storage only after

@@ -17,7 +17,7 @@ const baseEnvironment = {
 };
 
 describe('AI environment validation', () => {
-  it('applies valid embedding and PDF ingestion defaults', () => {
+  it('applies valid AI and PDF ingestion defaults', () => {
     const validation = envValidationSchema.validate(baseEnvironment);
 
     expect(validation.error).toBeUndefined();
@@ -26,6 +26,11 @@ describe('AI environment validation', () => {
       OLLAMA_BASE_URL: 'http://localhost:11434',
       OLLAMA_EMBEDDING_MODEL: 'embeddinggemma',
       OLLAMA_EMBEDDING_TIMEOUT_MS: 30_000,
+      LLM_PROVIDER: 'ollama',
+      OLLAMA_LLM_MODEL: 'qwen3:8b',
+      OLLAMA_LLM_TIMEOUT_MS: 120_000,
+      RAG_DEFAULT_TOP_K: 5,
+      RAG_MIN_SIMILARITY: 0.5,
       RAG_PDF_MAX_FILE_SIZE_BYTES: 26_214_400,
       RAG_PDF_MAX_PAGES: 500,
     });
@@ -35,6 +40,11 @@ describe('AI environment validation', () => {
     ['provider', { EMBEDDINGS_PROVIDER: 'unknown' }],
     ['URL', { OLLAMA_BASE_URL: 'not-a-url' }],
     ['timeout', { OLLAMA_EMBEDDING_TIMEOUT_MS: 0 }],
+    ['LLM provider', { LLM_PROVIDER: 'unknown' }],
+    ['LLM model', { OLLAMA_LLM_MODEL: '  ' }],
+    ['LLM timeout', { OLLAMA_LLM_TIMEOUT_MS: 0 }],
+    ['RAG top K', { RAG_DEFAULT_TOP_K: 1.5 }],
+    ['RAG similarity minimum', { RAG_MIN_SIMILARITY: 1.1 }],
     ['PDF file size', { RAG_PDF_MAX_FILE_SIZE_BYTES: 0 }],
     ['PDF page count', { RAG_PDF_MAX_PAGES: 1.5 }],
   ])('rejects an invalid %s', (_, override) => {

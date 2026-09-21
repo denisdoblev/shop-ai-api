@@ -48,6 +48,10 @@ describe('RetrievalService', () => {
     expect(sql).toContain("document.status = 'ready'");
     expect(sql).toContain('chunk.embedding IS NOT NULL');
     expect(sql).toContain('chunk.embedding_model = $2');
+    expect(sql).toContain('document.name AS "documentName"');
+    expect(sql).toContain('chunk.page_start AS "pageStart"');
+    expect(sql).toContain('chunk.page_end AS "pageEnd"');
+    expect(sql).toContain('chunk.section AS "section"');
     expect(sql).toContain(
       'ORDER BY chunk.embedding <=> $1::vector ASC, chunk.id ASC',
     );
@@ -79,9 +83,13 @@ describe('RetrievalService', () => {
       {
         id: 'chunk-id',
         documentId: 'document-id',
+        documentName: 'Manual',
         productId: 'product-id',
         content: 'Mute button',
         chunkIndex: 0,
+        pageStart: 14,
+        pageEnd: 14,
+        section: null,
         metadata: { source: 'manual' },
         similarity: '0.875',
       },
@@ -91,9 +99,13 @@ describe('RetrievalService', () => {
       {
         id: 'chunk-id',
         documentId: 'document-id',
+        documentName: 'Manual',
         productId: 'product-id',
         content: 'Mute button',
         chunkIndex: 0,
+        pageStart: 14,
+        pageEnd: 14,
+        section: null,
         metadata: { source: 'manual' },
         similarity: 0.875,
       },

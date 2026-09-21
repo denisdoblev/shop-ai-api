@@ -9,9 +9,13 @@ import { RagChunk } from '../entities/rag-chunk.entity';
 export interface RetrievedChunk {
   id: string;
   documentId: string;
+  documentName: string;
   productId: string;
   content: string;
   chunkIndex: number;
+  pageStart: number | null;
+  pageEnd: number | null;
+  section: string | null;
   metadata: Record<string, unknown>;
   similarity: number;
 }
@@ -67,9 +71,13 @@ export class RetrievalService {
         SELECT
           chunk.id AS "id",
           chunk.document_id AS "documentId",
+          document.name AS "documentName",
           document.product_id AS "productId",
           chunk.content AS "content",
           chunk.chunk_index AS "chunkIndex",
+          chunk.page_start AS "pageStart",
+          chunk.page_end AS "pageEnd",
+          chunk.section AS "section",
           chunk.metadata AS "metadata",
           1 - (chunk.embedding <=> $1::vector) AS "similarity"
         FROM rag_chunks chunk
