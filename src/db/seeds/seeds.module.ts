@@ -5,14 +5,12 @@ import { Attribute } from '../../attributes/entities/attribute.entity';
 import { Brand } from '../../brands/entities/brand.entity';
 import { CategoryAttribute } from '../../categories/entities/category-attribute.entity';
 import { Category } from '../../categories/entities/category.entity';
-import {
-  databaseEnvValidationSchema,
-  typeOrmConfigFactory,
-} from '../../config';
+import { seedEnvValidationSchema, typeOrmConfigFactory } from '../../config';
 import { ProductImage } from '../../products/entities/product-image.entity';
 import { ProductPrice } from '../../products/entities/product-price.entity';
 import { ProductSpecification } from '../../products/entities/product-specification.entity';
 import { Product } from '../../products/entities/product.entity';
+import { User } from '../../auth/entities/user.entity';
 import { DatabaseSeederService } from './database-seeder.service';
 import { AttributesSeeder } from './seeders/attributes.seeder';
 import { BrandsSeeder } from './seeders/brands.seeder';
@@ -22,12 +20,13 @@ import { ProductImagesSeeder } from './seeders/product-images.seeder';
 import { ProductPricesSeeder } from './seeders/product-prices.seeder';
 import { ProductsSeeder } from './seeders/products.seeder';
 import { ProductSpecificationsSeeder } from './seeders/product-specifications.seeder';
+import { UsersSeeder } from './seeders/users.seeder';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      validationSchema: databaseEnvValidationSchema,
+      validationSchema: seedEnvValidationSchema,
       validationOptions: {
         allowUnknown: true,
         abortEarly: true,
@@ -46,6 +45,7 @@ import { ProductSpecificationsSeeder } from './seeders/product-specifications.se
       ProductSpecification,
       ProductImage,
       ProductPrice,
+      User,
     ]),
   ],
   providers: [
@@ -58,6 +58,7 @@ import { ProductSpecificationsSeeder } from './seeders/product-specifications.se
     ProductSpecificationsSeeder,
     ProductImagesSeeder,
     ProductPricesSeeder,
+    UsersSeeder,
   ],
 })
 export class SeedsModule {}

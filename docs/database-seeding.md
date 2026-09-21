@@ -2,10 +2,10 @@
 
 ## Purpose
 
-`pnpm db:seed` creates a small deterministic catalog for local development. It
-is not a fixture system for tests and it does not seed users or production-only
-data. Migrations define schema; seeds create demonstration data; tests keep their
-own setup and cleanup.
+`pnpm db:seed` creates a deterministic catalog and local administrator for
+development. It is not a fixture system for tests or a production bootstrap.
+Migrations define schema; seeds create demonstration data; tests keep their own
+setup and cleanup.
 
 ## Architecture
 
@@ -20,12 +20,15 @@ transactional `EntityManager`; seeders do not inject repositories. The applicati
 context closes in a `finally` block, and failures leave a non-zero process exit code.
 
 Execution order is brands, categories, attributes, category attributes, products,
-product specifications, product images, and product prices.
+product specifications, product images, product prices, and users.
 
 ## Commands and prerequisites
 
-Set the database variables documented in `.env.example`, start a PostgreSQL
-instance, and apply migrations before running a seed.
+Set the database variables plus `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD`
+documented in `.env.example`, start a PostgreSQL instance, and apply migrations
+before running a seed. Both administrator variables are required and validated in
+development and test. The email must be valid; the password must be 6-20
+characters and contain uppercase, lowercase, and a number or symbol.
 
 ```bash
 pnpm run migration:run
@@ -38,10 +41,12 @@ CommonJS entry point. Seeds are never run automatically when the API starts.
 
 ## Seeded data
 
-The development set contains Sony, Bose, and Apple; an Electronics > Headphones
-category hierarchy; five reusable headphone attributes; three comparable products;
-typed specifications; two ordered images per product; and two USD price-history
-entries per product. The data supports catalog listing/detail, category and brand
+The development set contains nine headphone brands, an Electronics > Audio >
+Headphones hierarchy plus Speakers and Wearables, five reusable headphone
+attributes, and nine comparable products. Each product has typed specifications,
+two ordered images, and two USD price-history entries. It also creates an active
+administrator from `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD`, with the `admin`
+role. The data supports catalog listing/detail, category and brand
 filters, EAV string/number/boolean filters, image ordering, and price history.
 
 Text search and a product-comparison endpoint are not implemented by the API; the
@@ -54,6 +59,11 @@ category/attribute and product/attribute pairs for associations, product/positio
 for images, and product/timestamp for prices. Upserts use the `deleted_at IS NULL`
 partial-index predicate, so a second execution reconciles managed active rows
 without duplicating them.
+
+The local administrator is create-only and identified by email. Rerunning the seed
+does nothing when any active or soft-deleted user already has that email: it never
+reactivates the account, changes its roles, or resets its password. This makes the
+seed idempotent without risking elevation of an existing account.
 
 The declared seed keys are managed by the seed: rerunning it restores their
 documented mutable values, while records with other keys remain untouched. The seed
@@ -79,9 +89,11 @@ require a reviewed migration.
 
 ## Production and tests
 
-The set is demonstration data. Running it against production is an explicit
-operator decision and can overwrite values for the documented seed keys; review the
-data and target connection first. Do not use it as a production bootstrap contract.
+The set is demonstration data. With `NODE_ENV=production`, administrator variables
+are rejected and the user seeder is disabled before it accesses the users table.
+Catalog seeding remains available, but it can overwrite values for its documented
+catalog keys; review the data and target connection first. Do not use the command as
+a production administrator bootstrap contract.
 
 E2E tests truncate tables through the shared test helper. Run database-backed tests
 only against a dedicated disposable database, never a development or production

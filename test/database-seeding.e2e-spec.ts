@@ -1,8 +1,11 @@
 import { INestApplicationContext } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
+import * as bcrypt from 'bcrypt';
 import { DataSource } from 'typeorm';
 import { Attribute } from '../src/attributes/entities/attribute.entity';
+import { User } from '../src/auth/entities/user.entity';
+import { ValidRoles } from '../src/auth/interfaces';
 import { Brand } from '../src/brands/entities/brand.entity';
 import { CategoryAttribute } from '../src/categories/entities/category-attribute.entity';
 import { Category } from '../src/categories/entities/category.entity';
@@ -40,21 +43,21 @@ describe('Database seeding (e2e)', () => {
     await seeder.seed();
     await seeder.seed();
 
-    await expect(dataSource.getRepository(Brand).count()).resolves.toBe(3);
-    await expect(dataSource.getRepository(Category).count()).resolves.toBe(2);
+    await expect(dataSource.getRepository(Brand).count()).resolves.toBe(9);
+    await expect(dataSource.getRepository(Category).count()).resolves.toBe(5);
     await expect(dataSource.getRepository(Attribute).count()).resolves.toBe(5);
     await expect(
       dataSource.getRepository(CategoryAttribute).count(),
     ).resolves.toBe(5);
-    await expect(dataSource.getRepository(Product).count()).resolves.toBe(3);
+    await expect(dataSource.getRepository(Product).count()).resolves.toBe(9);
     await expect(
       dataSource.getRepository(ProductSpecification).count(),
-    ).resolves.toBe(15);
+    ).resolves.toBe(45);
     await expect(dataSource.getRepository(ProductImage).count()).resolves.toBe(
-      6,
+      18,
     );
     await expect(dataSource.getRepository(ProductPrice).count()).resolves.toBe(
-      6,
+      18,
     );
 
     const headphones = await dataSource.getRepository(Category).findOneBy({
@@ -66,6 +69,29 @@ describe('Database seeding (e2e)', () => {
 
     expect(headphones?.parentId).toEqual(expect.any(String));
     expect(sony?.categoryId).toBe(headphones?.id);
+
+    const admin = await dataSource.getRepository(User).findOne({
+      where: { email: process.env.SEED_ADMIN_EMAIL },
+      select: {
+        email: true,
+        password: true,
+        fullname: true,
+        isActive: true,
+        roles: true,
+      },
+    });
+    expect(admin).toMatchObject({
+      email: process.env.SEED_ADMIN_EMAIL,
+      fullname: 'Seed Administrator',
+      isActive: true,
+      roles: [ValidRoles.ADMIN],
+    });
+    await expect(
+      bcrypt.compare(
+        process.env.SEED_ADMIN_PASSWORD ?? '',
+        admin?.password ?? '',
+      ),
+    ).resolves.toBe(true);
   });
 
   it('rolls back all writes when a later seeder fails', async () => {

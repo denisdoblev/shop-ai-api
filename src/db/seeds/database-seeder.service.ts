@@ -8,6 +8,7 @@ import { ProductImagesSeeder } from './seeders/product-images.seeder';
 import { ProductPricesSeeder } from './seeders/product-prices.seeder';
 import { ProductsSeeder } from './seeders/products.seeder';
 import { ProductSpecificationsSeeder } from './seeders/product-specifications.seeder';
+import { UsersSeeder } from './seeders/users.seeder';
 import { Seeder } from './seeders/seeder.interface';
 
 @Injectable()
@@ -24,6 +25,7 @@ export class DatabaseSeederService {
     private readonly productSpecificationsSeeder: ProductSpecificationsSeeder,
     private readonly productImagesSeeder: ProductImagesSeeder,
     private readonly productPricesSeeder: ProductPricesSeeder,
+    private readonly usersSeeder: UsersSeeder,
   ) {}
 
   async seed(): Promise<void> {
@@ -55,6 +57,7 @@ export class DatabaseSeederService {
       this.productSpecificationsSeeder,
       this.productImagesSeeder,
       this.productPricesSeeder,
+      this.usersSeeder,
     ];
   }
 

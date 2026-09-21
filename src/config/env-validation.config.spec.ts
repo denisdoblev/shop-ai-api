@@ -1,4 +1,7 @@
-import { envValidationSchema } from './env-validation.config';
+import {
+  envValidationSchema,
+  seedEnvValidationSchema,
+} from './env-validation.config';
 
 const baseEnvironment = {
   NODE_ENV: 'test',
@@ -61,5 +64,52 @@ describe('AI environment validation', () => {
     });
 
     expect(error).toBeUndefined();
+  });
+});
+
+describe('seed environment validation', () => {
+  const seedEnvironment = {
+    ...baseEnvironment,
+    SEED_ADMIN_EMAIL: 'local-admin@example.com',
+    SEED_ADMIN_PASSWORD: 'LocalSeed9',
+  };
+
+  it('accepts explicit administrator credentials outside production', () => {
+    expect(
+      seedEnvValidationSchema.validate(seedEnvironment, { allowUnknown: true })
+        .error,
+    ).toBeUndefined();
+  });
+
+  it.each([
+    ['missing email', { SEED_ADMIN_EMAIL: undefined }],
+    ['invalid email', { SEED_ADMIN_EMAIL: 'not-an-email' }],
+    ['missing password', { SEED_ADMIN_PASSWORD: undefined }],
+    ['invalid password', { SEED_ADMIN_PASSWORD: 'weak' }],
+  ])('rejects %s', (_, override) => {
+    const validation = seedEnvValidationSchema.validate(
+      { ...seedEnvironment, ...override },
+      { allowUnknown: true },
+    );
+
+    expect(validation.error).toBeDefined();
+  });
+
+  it('rejects administrator seed credentials in production', () => {
+    const validation = seedEnvValidationSchema.validate(
+      { ...seedEnvironment, NODE_ENV: 'production' },
+      { allowUnknown: true },
+    );
+
+    expect(validation.error).toBeDefined();
+  });
+
+  it('allows production catalog seeding without administrator credentials', () => {
+    const validation = seedEnvValidationSchema.validate(
+      { ...baseEnvironment, NODE_ENV: 'production' },
+      { allowUnknown: true },
+    );
+
+    expect(validation.error).toBeUndefined();
   });
 });

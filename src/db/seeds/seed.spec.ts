@@ -8,6 +8,9 @@ jest.mock('@nestjs/core', () => ({
     createApplicationContext: jest.fn(),
   },
 }));
+jest.mock('./seeds.module', () => ({
+  SeedsModule: class SeedsModule {},
+}));
 
 describe('bootstrapSeeds', () => {
   const createApplicationContext = jest.mocked(

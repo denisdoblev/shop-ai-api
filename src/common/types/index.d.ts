@@ -10,6 +10,8 @@ declare namespace NodeJS {
     DB_PASSWORD: string;
     DB_NAME: string;
     TEST_DB_NAME?: string;
+    SEED_ADMIN_EMAIL?: string;
+    SEED_ADMIN_PASSWORD?: string;
     JWT_SECRET: string;
     SWAGGER_TITLE: string;
     SWAGGER_DESCRIPTION: string;

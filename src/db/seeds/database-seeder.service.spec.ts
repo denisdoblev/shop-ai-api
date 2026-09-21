@@ -8,11 +8,12 @@ import { ProductImagesSeeder } from './seeders/product-images.seeder';
 import { ProductPricesSeeder } from './seeders/product-prices.seeder';
 import { ProductsSeeder } from './seeders/products.seeder';
 import { ProductSpecificationsSeeder } from './seeders/product-specifications.seeder';
+import { UsersSeeder } from './seeders/users.seeder';
 import { Seeder } from './seeders/seeder.interface';
 
 describe('DatabaseSeederService', () => {
   const manager = {} as EntityManager;
-  const mockSeeders = Array.from({ length: 8 }, () => ({
+  const mockSeeders = Array.from({ length: 9 }, () => ({
     seed: jest.fn<Promise<void>, [EntityManager]>(),
   }));
   const seeders: Seeder[] = mockSeeders;
@@ -34,6 +35,7 @@ describe('DatabaseSeederService', () => {
       seeders[5] as ProductSpecificationsSeeder,
       seeders[6] as ProductImagesSeeder,
       seeders[7] as ProductPricesSeeder,
+      seeders[8] as UsersSeeder,
     );
 
   beforeEach(() => {

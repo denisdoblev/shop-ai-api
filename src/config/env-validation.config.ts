@@ -9,6 +9,25 @@ export const databaseEnvValidationSchema = Joi.object({
   DB_NAME: Joi.string().required(),
 });
 
+export const seedEnvValidationSchema = databaseEnvValidationSchema.concat(
+  Joi.object({
+    SEED_ADMIN_EMAIL: Joi.when('NODE_ENV', {
+      is: 'production',
+      then: Joi.forbidden(),
+      otherwise: Joi.string().trim().email().required(),
+    }),
+    SEED_ADMIN_PASSWORD: Joi.when('NODE_ENV', {
+      is: 'production',
+      then: Joi.forbidden(),
+      otherwise: Joi.string()
+        .min(6)
+        .max(20)
+        .pattern(/(?:(?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*/)
+        .required(),
+    }),
+  }),
+);
+
 export const envValidationSchema = databaseEnvValidationSchema.concat(
   Joi.object({
     PORT: Joi.number().port().default(3000),
