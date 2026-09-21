@@ -1,6 +1,6 @@
-# Catalog database schema
+# Application database schema
 
-The proposed catalog schema is stored in [`database-schema.sql`](database-schema.sql). It is a design reference for the catalog domains and is not an applied TypeORM migration. Schema changes that become part of the application must still be implemented as new migrations under `src/db/migrations/`.
+The application schema reference is stored in [`database-schema.sql`](database-schema.sql). It reflects the final state produced by the TypeORM migrations, but it is not itself an applied migration. Schema changes must still be implemented as new migrations under `src/db/migrations/`.
 
 The TypeORM application schema deliberately diverges from the reference SQL for
 primary-key defaults and audit timestamps: application tables use generated UUIDs
@@ -11,7 +11,9 @@ string filter indexes.
 
 ## Scope
 
-The catalog reference SQL defines the following tables:
+The reference SQL defines the following application tables:
+
+- `users`
 
 - `brands`
 - `categories`, including a self-referencing category hierarchy
@@ -22,10 +24,8 @@ The catalog reference SQL defines the following tables:
 - `product_specifications`, using typed EAV values
 - `product_prices`, retaining price history
 
-Authentication is outside that reference SQL's catalog scope. The application
-nevertheless has an implemented `users` table created by
-`1756425600000-CreateUsersTable.ts`, with UUID/audit fields, unique email,
-password hash, active status, and a `text[]` roles column defaulting to `user`.
+The `users` table has UUID/audit fields, unique email, password hash, active
+status, and a `text[]` roles column defaulting to `user`.
 The roles array currently has no database check constraint. Application code
 accepts only `user` and `admin`; any legacy `super-user` database value must be
 replaced with `admin`. Role promotion is initially performed directly in the

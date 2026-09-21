@@ -1,4 +1,31 @@
 -- ============================================================
+-- EXTENSIONS
+-- ============================================================
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS vector;
+
+
+-- ============================================================
+-- USERS
+-- ============================================================
+
+CREATE TABLE users (
+    id UUID NOT NULL PRIMARY KEY DEFAULT uuid_generate_v4(),
+
+    email TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL,
+    fullname TEXT NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    roles TEXT[] NOT NULL DEFAULT ARRAY['user']::TEXT[],
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at TIMESTAMPTZ NULL
+);
+
+
+-- ============================================================
 -- BRANDS
 -- ============================================================
 
@@ -40,6 +67,47 @@ CREATE TABLE categories (
     CONSTRAINT chk_categories_not_self_parent
         CHECK (parent_id IS NULL OR parent_id <> id)
 );
+
+
+-- Prevent indirect cycles in the category hierarchy.
+
+CREATE OR REPLACE FUNCTION prevent_category_parent_cycle()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    current_id UUID;
+    visited_ids UUID[] := ARRAY[NEW.id];
+BEGIN
+    IF NEW.parent_id IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    PERFORM pg_advisory_xact_lock(734921);
+    current_id := NEW.parent_id;
+
+    WHILE current_id IS NOT NULL LOOP
+        IF current_id = ANY(visited_ids) THEN
+            RAISE EXCEPTION 'Category parent assignment would create a cycle'
+                USING ERRCODE = '23514';
+        END IF;
+
+        visited_ids := array_append(visited_ids, current_id);
+        SELECT parent_id
+        INTO current_id
+        FROM categories
+        WHERE id = current_id
+          AND deleted_at IS NULL;
+    END LOOP;
+
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_categories_prevent_parent_cycle
+BEFORE INSERT OR UPDATE OF parent_id ON categories
+FOR EACH ROW
+EXECUTE FUNCTION prevent_category_parent_cycle();
 
 
 -- ============================================================
@@ -95,6 +163,158 @@ CREATE TABLE products (
         REFERENCES categories(id)
         ON DELETE RESTRICT
 );
+
+
+-- ============================================================
+-- PRODUCT FAVORITES
+-- ============================================================
+
+CREATE TABLE product_favorites (
+    id UUID NOT NULL PRIMARY KEY DEFAULT uuid_generate_v4(),
+
+    user_id UUID NOT NULL,
+    product_id UUID NOT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at TIMESTAMPTZ NULL,
+
+    CONSTRAINT fk_product_favorites_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_product_favorites_product
+        FOREIGN KEY (product_id)
+        REFERENCES products(id)
+        ON DELETE RESTRICT
+);
+
+CREATE INDEX idx_product_favorites_user_active
+    ON product_favorites(user_id)
+    WHERE deleted_at IS NULL;
+
+CREATE UNIQUE INDEX uq_product_favorites_active
+    ON product_favorites(user_id, product_id)
+    WHERE deleted_at IS NULL;
+
+
+-- ============================================================
+-- RAG DOCUMENTS
+-- ============================================================
+
+CREATE TABLE rag_documents (
+    id UUID NOT NULL PRIMARY KEY DEFAULT uuid_generate_v4(),
+
+    product_id UUID NOT NULL,
+
+    name VARCHAR(255) NOT NULL,
+    source_type VARCHAR(20) NOT NULL DEFAULT 'pdf',
+    source_uri TEXT NULL,
+    mime_type VARCHAR(100) NOT NULL DEFAULT 'application/pdf',
+    content_hash CHAR(64) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    processing_error TEXT NULL,
+    processed_at TIMESTAMPTZ NULL,
+    page_count INTEGER NULL,
+    file_size_bytes BIGINT NULL,
+    metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at TIMESTAMPTZ NULL,
+
+    CONSTRAINT fk_rag_documents_product
+        FOREIGN KEY (product_id)
+        REFERENCES products(id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT chk_rag_documents_source_type
+        CHECK (source_type IN ('pdf', 'text')),
+    CONSTRAINT chk_rag_documents_content_hash
+        CHECK (content_hash ~ '^[0-9A-Fa-f]{64}$'),
+    CONSTRAINT chk_rag_documents_status
+        CHECK (status IN ('pending', 'processing', 'ready', 'failed')),
+    CONSTRAINT chk_rag_documents_page_count
+        CHECK (page_count IS NULL OR page_count > 0),
+    CONSTRAINT chk_rag_documents_file_size_bytes
+        CHECK (file_size_bytes IS NULL OR file_size_bytes >= 0),
+    CONSTRAINT chk_rag_documents_metadata_object
+        CHECK (jsonb_typeof(metadata) = 'object')
+);
+
+CREATE INDEX idx_rag_documents_product_active
+    ON rag_documents(product_id)
+    WHERE deleted_at IS NULL;
+
+CREATE UNIQUE INDEX uq_rag_documents_product_content_hash_active
+    ON rag_documents(product_id, content_hash)
+    WHERE deleted_at IS NULL;
+
+
+-- ============================================================
+-- RAG CHUNKS
+-- ============================================================
+
+CREATE TABLE rag_chunks (
+    id UUID NOT NULL PRIMARY KEY DEFAULT uuid_generate_v4(),
+
+    document_id UUID NOT NULL,
+
+    content TEXT NOT NULL,
+    chunk_index INTEGER NOT NULL,
+    page_start INTEGER NULL,
+    page_end INTEGER NULL,
+    section TEXT NULL,
+    token_count INTEGER NULL,
+    metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+    embedding VECTOR(768) NULL,
+    embedding_model VARCHAR(150) NULL,
+    embedded_at TIMESTAMPTZ NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at TIMESTAMPTZ NULL,
+
+    CONSTRAINT fk_rag_chunks_document
+        FOREIGN KEY (document_id)
+        REFERENCES rag_documents(id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT chk_rag_chunks_content_not_empty
+        CHECK (btrim(content) <> ''),
+    CONSTRAINT chk_rag_chunks_chunk_index
+        CHECK (chunk_index >= 0),
+    CONSTRAINT chk_rag_chunks_page_start
+        CHECK (page_start IS NULL OR page_start > 0),
+    CONSTRAINT chk_rag_chunks_page_end
+        CHECK (page_end IS NULL OR page_end > 0),
+    CONSTRAINT chk_rag_chunks_page_range
+        CHECK (page_start IS NULL OR page_end IS NULL OR page_end >= page_start),
+    CONSTRAINT chk_rag_chunks_token_count
+        CHECK (token_count IS NULL OR token_count >= 0),
+    CONSTRAINT chk_rag_chunks_metadata_object
+        CHECK (jsonb_typeof(metadata) = 'object'),
+    CONSTRAINT chk_rag_chunks_embedding_state
+        CHECK (
+            (embedding IS NULL AND embedding_model IS NULL AND embedded_at IS NULL)
+            OR
+            (embedding IS NOT NULL AND embedding_model IS NOT NULL
+             AND btrim(embedding_model) <> '' AND embedded_at IS NOT NULL)
+        )
+);
+
+CREATE INDEX idx_rag_chunks_document_active
+    ON rag_chunks(document_id)
+    WHERE deleted_at IS NULL;
+
+CREATE UNIQUE INDEX uq_rag_chunks_document_chunk_index_active
+    ON rag_chunks(document_id, chunk_index)
+    WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_rag_chunks_embedding_hnsw_active
+    ON rag_chunks USING hnsw (embedding vector_cosine_ops)
+    WHERE deleted_at IS NULL AND embedding IS NOT NULL;
 
 
 -- ============================================================
@@ -442,6 +662,6 @@ CREATE INDEX idx_product_specifications_string
 CREATE INDEX idx_product_prices_history
     ON product_prices(
         product_id,
-        recorded_at DESC
+        recorded_at
     )
     WHERE deleted_at IS NULL;
