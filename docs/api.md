@@ -162,6 +162,26 @@ price filters. The visible price remains the latest active record in any
 currency. Facet counts apply the other filter groups and ignore their own.
 The service uses a constant set of aggregate queries without per-product calls.
 
+### Product RAG documents
+
+`POST /products/:productId/rag-documents` requires `admin` and consumes
+`multipart/form-data`:
+
+- `file`: required PDF kept in memory for the duration of the request.
+- `chunkSize`: optional integer from 200 through 4000; default `1200`.
+- `chunkOverlap`: optional non-negative integer smaller than `chunkSize`;
+  default `200`.
+
+The 201 response contains `id`, `productId`, `name`, `sourceType`, `mimeType`,
+`status`, `pageCount`, `chunkCount`, `fileSizeBytes`, `processedAt`, and
+`createdAt`. Successful synchronous ingestion always returns `status: "ready"`.
+
+Missing, non-PDF, corrupt, textless, or invalidly configured uploads return 400.
+An absent active product returns 404. An active document with the same product
+and SHA-256 content hash returns 409, including concurrent uploads. A normalized
+embedding-provider failure returns 503. Authentication and authorization use the
+standard 401/403 behavior.
+
 ### Product prices
 
 `GET /products/:productId/prices` returns active historical price records in

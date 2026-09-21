@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { User } from './entities/user.entity';
@@ -18,6 +19,7 @@ import { UserRoleGuard } from './guards/user-role.guard';
     ConfigModule,
     TypeOrmModule.forFeature([User]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
+    ThrottlerModule.forRoot([{ limit: 5, ttl: 60_000 }]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

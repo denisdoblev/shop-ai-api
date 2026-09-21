@@ -12,7 +12,11 @@ export const databaseEnvValidationSchema = Joi.object({
 export const envValidationSchema = databaseEnvValidationSchema.concat(
   Joi.object({
     PORT: Joi.number().port().default(3000),
-    JWT_SECRET: Joi.string().required(),
+    JWT_SECRET: Joi.when('NODE_ENV', {
+      is: 'production',
+      then: Joi.string().min(32).required(),
+      otherwise: Joi.string().required(),
+    }),
     SWAGGER_TITLE: Joi.string().required(),
     SWAGGER_DESCRIPTION: Joi.string().required(),
     SWAGGER_VERSION: Joi.string().required(),
@@ -28,5 +32,10 @@ export const envValidationSchema = databaseEnvValidationSchema.concat(
       .integer()
       .positive()
       .default(30_000),
+    RAG_PDF_MAX_FILE_SIZE_BYTES: Joi.number()
+      .integer()
+      .positive()
+      .default(26_214_400),
+    RAG_PDF_MAX_PAGES: Joi.number().integer().positive().default(500),
   }),
 );

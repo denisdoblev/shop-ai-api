@@ -18,5 +18,7 @@ declare namespace NodeJS {
     OLLAMA_BASE_URL?: string;
     OLLAMA_EMBEDDING_MODEL?: string;
     OLLAMA_EMBEDDING_TIMEOUT_MS?: string;
+    RAG_PDF_MAX_FILE_SIZE_BYTES?: string;
+    RAG_PDF_MAX_PAGES?: string;
   }
 }

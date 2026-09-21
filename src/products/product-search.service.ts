@@ -49,14 +49,15 @@ class SqlParameters {
 
 const SEARCH_CTE = `
 WITH RECURSIVE category_closure AS (
-  SELECT id AS ancestor_id, id AS descendant_id
+  SELECT id AS ancestor_id, id AS descendant_id, ARRAY[id] AS path
   FROM categories
   WHERE deleted_at IS NULL
   UNION ALL
-  SELECT closure.ancestor_id, child.id
+  SELECT closure.ancestor_id, child.id, closure.path || child.id
   FROM category_closure closure
   JOIN categories child ON child.parent_id = closure.descendant_id
   WHERE child.deleted_at IS NULL
+    AND NOT child.id = ANY(closure.path)
 ), enriched AS (
   SELECT
     product.id,

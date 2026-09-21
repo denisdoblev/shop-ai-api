@@ -31,8 +31,12 @@ Configuration is validated at startup. The required variable names are documente
 - `SWAGGER_TITLE`, `SWAGGER_DESCRIPTION`, `SWAGGER_VERSION`
 - `EMBEDDINGS_PROVIDER`, `OLLAMA_BASE_URL`, `OLLAMA_EMBEDDING_MODEL`,
   `OLLAMA_EMBEDDING_TIMEOUT_MS`
+- `RAG_PDF_MAX_FILE_SIZE_BYTES`, `RAG_PDF_MAX_PAGES`
 
 Do not commit `.env` or real secret values.
+
+In production, `JWT_SECRET` must be at least 32 characters long and randomly
+generated.
 
 ### Local embeddings
 
@@ -215,17 +219,19 @@ for the constraints and rollback safeguards.
 
 The application groups its AI foundation under `src/ai/`. `AiModule` composes
 chat orchestration, the RAG ingestion/chunking/embeddings/retrieval modules, and
-the LLM module. RAG owns the existing `rag_documents` and `rag_chunks` entities
-and registers their TypeORM repositories. `EmbeddingsService` delegates queries
-and document batches to a replaceable provider. The internal `RetrievalService`
+the LLM module. RAG owns the existing `rag_documents` and `rag_chunks` entities.
+Administrators can synchronously ingest an in-memory PDF with
+`POST /api/products/:productId/rag-documents`; parsing, page-aware chunking, and
+embedding complete before one transaction persists the ready document and its
+chunks. See [`docs/rag-ingestion.md`](docs/rag-ingestion.md) for limits and
+failure behavior. `EmbeddingsService` delegates queries and document batches to
+a replaceable provider. The internal `RetrievalService`
 embeds a query once, searches ready documents with cosine distance, optionally
 filters by product, and returns the requested top K chunks without their stored
 vectors. It excludes soft-deleted chunks, documents, and products, null
 embeddings, and embeddings from another model. The initial Ollama adapter and
 retrieval flow do not expose an HTTP endpoint. `ChatController` has the
-`ai/chat` base path but no handlers, so there is still no public AI API or
-OpenAPI contract. Real ingestion, chunking, persistence, chat, and LLM behavior
-remain future work.
+`ai/chat` base path but no handlers; chat and LLM behavior remain future work.
 
 The internal retrieval contract is:
 

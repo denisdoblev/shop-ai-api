@@ -9,7 +9,7 @@ This document is the source of truth for conventions established by the reposito
 - **Explicit:** Injecting TypeORM `Repository<Entity>` directly is the established repository/data-access pattern. A custom repository layer is optional, not required (`src/auth/auth.service.ts`, `AGENTS.md`).
 - **Strong inferred:** Shared application code belongs in `src/common/`, configuration factories in `src/config/`, and datasource/migrations in `src/db/`.
 - **Explicit:** AI capabilities belong to the `src/ai/` aggregate. `AiModule` composes chat orchestration, RAG persistence/workflow modules, and LLM integration; RAG entities live under `src/ai/rag/entities/`.
-- **Explicit:** The AI aggregate has no public handler or real ingestion, chunking, chat, or LLM behavior yet. Embeddings and retrieval are internal exceptions: `EmbeddingsService` depends on the provider-neutral `EMBEDDING_PROVIDER` token, and `EmbeddingsModule` selects the configured adapter. The Ollama adapter owns EmbeddingGemma input formatting and response validation. `RetrievalService` performs top-K pgvector cosine search over ready, active documents and model-compatible 768-dimensional embeddings, with an optional product filter. It returns plain retrieval results without exposing stored vectors.
+- **Explicit:** The AI aggregate exposes synchronous, administrator-only local PDF ingestion under a product. The PDF remains in memory, parsing preserves page numbering, chunking never crosses a page, embeddings are validated before persistence, and one transaction writes a ready document plus all chunks. `EmbeddingsService` depends on the provider-neutral `EMBEDDING_PROVIDER` token, and `EmbeddingsModule` selects the configured adapter. The Ollama adapter owns EmbeddingGemma input formatting and response validation. `RetrievalService` performs top-K pgvector cosine search over ready, active documents and model-compatible 768-dimensional embeddings, with an optional product filter. It returns plain retrieval results without exposing stored vectors. Chat and LLM behavior remain unimplemented.
 - **Not established in the current codebase:** CQRS, domain events, use-case classes, or a formal hexagonal layer structure.
 
 ## 2. File and Folder Naming
@@ -99,6 +99,7 @@ This document is the source of truth for conventions established by the reposito
 
 - **Explicit:** Global `ConfigModule` validates environment through Joi. Database, Swagger, `NODE_ENV`, and `JWT_SECRET` values are required; `PORT` defaults to 3000.
 - **Explicit:** Embedding configuration is validated at startup and defaults to Ollama at `http://localhost:11434`, model `embeddinggemma`, and a 30000 ms timeout. Provider connectivity is lazy and is never checked during bootstrap.
+- **Explicit:** Local PDF ingestion limits are validated at startup and default to 25 MiB and 500 pages. Uploaded PDFs are not written to disk or object storage.
 - **Strong inferred:** Runtime code consumes `ConfigService`; standalone TypeORM CLI setup loads dotenv directly.
 - **Explicit:** `ProcessEnv` declarations describe raw environment values as strings. Parse/coerce numeric values at configuration boundaries.
 - **Explicit:** `.env` files are ignored and real secrets must never appear in source or documentation.

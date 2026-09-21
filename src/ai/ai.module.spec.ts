@@ -10,6 +10,7 @@ import { RagChunk } from './rag/entities/rag-chunk.entity';
 import { RagDocument } from './rag/entities/rag-document.entity';
 import { IngestionService } from './rag/ingestion/ingestion.service';
 import { RetrievalService } from './rag/retrieval/retrieval.service';
+import { Product } from '../products/entities/product.entity';
 
 describe('AiModule', () => {
   let module: TestingModule;
@@ -18,6 +19,10 @@ describe('AiModule', () => {
     module = await Test.createTestingModule({
       imports: [AiModule],
     })
+      .overrideProvider(IngestionService)
+      .useValue({})
+      .overrideProvider(getRepositoryToken(Product))
+      .useValue({})
       .overrideProvider(getRepositoryToken(RagDocument))
       .useValue({})
       .overrideProvider(getRepositoryToken(RagChunk))

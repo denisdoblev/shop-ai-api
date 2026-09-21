@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Body } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { GetUser, Auth } from './decorators';
 import { AuthResponseDto, CreateUserDto, LoginUserDto } from './dto';
@@ -13,6 +14,8 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiPostResponses(AuthResponseDto, {
     description: 'User registered successfully',
     hasApiBearerToken: false,
@@ -22,6 +25,8 @@ export class AuthController {
   }
 
   @Post('login')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiPostResponses(AuthResponseDto, {
     description: 'User logged in successfully',
     hasApiBearerToken: false,
