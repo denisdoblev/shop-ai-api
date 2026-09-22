@@ -55,7 +55,12 @@ export const envValidationSchema = databaseEnvValidationSchema.concat(
     OLLAMA_LLM_MODEL: Joi.string().trim().min(1).default('qwen3:8b'),
     OLLAMA_LLM_TIMEOUT_MS: Joi.number().integer().positive().default(120_000),
     RAG_DEFAULT_TOP_K: Joi.number().integer().positive().default(5),
-    RAG_MIN_SIMILARITY: Joi.number().min(-1).max(1).default(0.5),
+    RAG_STRONG_SIMILARITY_THRESHOLD: Joi.number().min(-1).max(1).default(0.5),
+    RAG_MODERATE_SIMILARITY_THRESHOLD: Joi.number()
+      .min(-1)
+      .max(Joi.ref('RAG_STRONG_SIMILARITY_THRESHOLD'))
+      .default(0.4),
+    RAG_MINIMUM_SIMILARITY_GAP: Joi.number().min(0).max(2).default(0.12),
     RAG_PDF_MAX_FILE_SIZE_BYTES: Joi.number()
       .integer()
       .positive()

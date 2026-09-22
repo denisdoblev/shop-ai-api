@@ -30,7 +30,9 @@ describe('AI environment validation', () => {
       OLLAMA_LLM_MODEL: 'qwen3:8b',
       OLLAMA_LLM_TIMEOUT_MS: 120_000,
       RAG_DEFAULT_TOP_K: 5,
-      RAG_MIN_SIMILARITY: 0.5,
+      RAG_STRONG_SIMILARITY_THRESHOLD: 0.5,
+      RAG_MODERATE_SIMILARITY_THRESHOLD: 0.4,
+      RAG_MINIMUM_SIMILARITY_GAP: 0.12,
       RAG_PDF_MAX_FILE_SIZE_BYTES: 26_214_400,
       RAG_PDF_MAX_PAGES: 500,
     });
@@ -44,7 +46,16 @@ describe('AI environment validation', () => {
     ['LLM model', { OLLAMA_LLM_MODEL: '  ' }],
     ['LLM timeout', { OLLAMA_LLM_TIMEOUT_MS: 0 }],
     ['RAG top K', { RAG_DEFAULT_TOP_K: 1.5 }],
-    ['RAG similarity minimum', { RAG_MIN_SIMILARITY: 1.1 }],
+    ['RAG strong similarity', { RAG_STRONG_SIMILARITY_THRESHOLD: 1.1 }],
+    ['RAG moderate similarity', { RAG_MODERATE_SIMILARITY_THRESHOLD: -1.1 }],
+    [
+      'RAG moderate similarity above strong similarity',
+      {
+        RAG_STRONG_SIMILARITY_THRESHOLD: 0.5,
+        RAG_MODERATE_SIMILARITY_THRESHOLD: 0.6,
+      },
+    ],
+    ['RAG similarity gap', { RAG_MINIMUM_SIMILARITY_GAP: -0.01 }],
     ['PDF file size', { RAG_PDF_MAX_FILE_SIZE_BYTES: 0 }],
     ['PDF page count', { RAG_PDF_MAX_PAGES: 1.5 }],
   ])('rejects an invalid %s', (_, override) => {

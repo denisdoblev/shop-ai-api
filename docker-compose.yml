@@ -3,7 +3,7 @@ services:
     image: pgvector/pgvector:pg17
     restart: always
     ports:
-      - "5432:5432"
+      - '5432:5432'
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USERNAME}
@@ -12,7 +12,7 @@ services:
     volumes:
       - ./postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME} -d ${DB_NAME}']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -22,9 +22,9 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: nest_api
-    profiles: ["api"]
+    profiles: ['api']
     ports:
-      - "${PORT}:${PORT}"
+      - '${PORT}:${PORT}'
     environment:
       NODE_ENV: ${NODE_ENV}
       DB_HOST: db
@@ -44,7 +44,9 @@ services:
       OLLAMA_LLM_MODEL: ${OLLAMA_LLM_MODEL:-qwen3:8b}
       OLLAMA_LLM_TIMEOUT_MS: ${OLLAMA_LLM_TIMEOUT_MS:-120000}
       RAG_DEFAULT_TOP_K: ${RAG_DEFAULT_TOP_K:-5}
-      RAG_MIN_SIMILARITY: ${RAG_MIN_SIMILARITY:-0.50}
+      RAG_STRONG_SIMILARITY_THRESHOLD: ${RAG_STRONG_SIMILARITY_THRESHOLD:-0.50}
+      RAG_MODERATE_SIMILARITY_THRESHOLD: ${RAG_MODERATE_SIMILARITY_THRESHOLD:-0.40}
+      RAG_MINIMUM_SIMILARITY_GAP: ${RAG_MINIMUM_SIMILARITY_GAP:-0.12}
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules
