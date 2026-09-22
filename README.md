@@ -32,10 +32,18 @@ Configuration is validated at startup. The required variable names are documente
 - `EMBEDDINGS_PROVIDER`, `OLLAMA_BASE_URL`, `OLLAMA_EMBEDDING_MODEL`,
   `OLLAMA_EMBEDDING_TIMEOUT_MS`
 - `LLM_PROVIDER`, `OLLAMA_LLM_MODEL`, `OLLAMA_LLM_TIMEOUT_MS`
-- `RAG_DEFAULT_TOP_K`, `RAG_MIN_SIMILARITY`
+- `RAG_DEFAULT_TOP_K`, `RAG_STRONG_SIMILARITY_THRESHOLD`,
+  `RAG_MODERATE_SIMILARITY_THRESHOLD`, `RAG_MINIMUM_SIMILARITY_GAP`
 - `RAG_PDF_MAX_FILE_SIZE_BYTES`, `RAG_PDF_MAX_PAGES`
 
 Do not commit `.env` or real secret values.
+
+The relevance gate no longer reads `RAG_MIN_SIMILARITY`. Existing deployments
+that customized that variable must replace it with the three explicit threshold
+variables before rollout. No database migration, document reingestion, or
+embedding regeneration is required. See
+[`docs/rag-generation.md`](docs/rag-generation.md#deployment-and-rollback) for
+the decision rule, rollout checks, and rollback procedure.
 
 `pnpm db:seed` additionally requires `SEED_ADMIN_EMAIL` and
 `SEED_ADMIN_PASSWORD` in development and test. The command never seeds an
@@ -76,6 +84,12 @@ pnpm run test:integration
 These tests call `http://localhost:11434` directly and enforce the same
 `TEST_DB_NAME` `_test` safeguards as E2E. Generation tests also require
 `qwen3:8b`. `pnpm test` does not require Ollama or PostgreSQL.
+
+For a reproducible 20-case retrieval and generation baseline, run
+`pnpm test:rag-eval` after the same database setup. Quality misses are reported
+without failing the command; invalid data, unavailable infrastructure, and report
+write failures do fail it. See [`docs/rag-evaluation.md`](docs/rag-evaluation.md)
+for dataset composition, metrics, and artifact interpretation.
 
 ### E2E database safety
 
@@ -238,9 +252,10 @@ embeds a query once, searches ready documents with cosine distance, optionally
 filters by product, and returns the requested top K chunks with document, page,
 and section source fields but without stored vectors. It excludes soft-deleted
 chunks, documents, and products, null embeddings, and embeddings from another
-model. `RagService` filters those results by configured similarity, returns
-deterministic insufficiency without generation when none remain, or builds a
-grounded prompt and delegates to the provider-neutral `LlmService`. The Ollama
+model. `RagService` evaluates top 1 absolute similarity and top 1/top 2
+separation through a configurable relevance gate, returns deterministic
+insufficiency without generation when evidence is too weak or ambiguous, or
+builds a grounded prompt and delegates to the provider-neutral `LlmService`. The Ollama
 LLM adapter uses non-streaming `qwen3:8b` with thinking disabled. See
 [`docs/rag-generation.md`](docs/rag-generation.md). This internal flow does not
 expose an HTTP endpoint; `ChatController` retains the `ai/chat` base path without
@@ -289,31 +304,39 @@ The committed initial migration creates `users` with UUID primary keys. It targe
 ```bash
 pnpm test
 pnpm run test:e2e
+pnpm run test:integration
+pnpm test:rag-eval
 pnpm run lint
 pnpm typecheck
 pnpm run build
 ```
 
 `pnpm run lint` applies automatic fixes. Use `pnpm run format` to format TypeScript source and test files directly.
+`test:integration` and `test:rag-eval` additionally require the safe migrated
+test database and local Ollama models described above. Quality misses in the RAG
+evaluation are written to its report but do not make the command fail;
+infrastructure or report-write failures do.
 
 ## Structure
 
-| Path                       | Purpose                                                               |
-| -------------------------- | --------------------------------------------------------------------- |
-| `src/auth/`                | Authentication domain                                                 |
-| `src/ai/`                  | AI aggregate: chat, RAG workflows/storage, and LLM wiring             |
-| `src/brands/`              | Brand catalog domain and CRUD API                                     |
-| `src/categories/`          | Hierarchical category domain and CRUD API                             |
-| `src/attributes/`          | Reusable typed attribute domain and CRUD API                          |
-| `src/products/`            | Product domain, base CRUD, and brand/category filters                 |
-| `src/common/`              | Shared DTOs, entities, decorators, and types                          |
-| `src/config/`              | Application, environment, logging, Swagger, and TypeORM configuration |
-| `src/db/`                  | TypeORM datasource, migrations, and standalone seeds                  |
-| `test/`                    | Integration/E2E tests and shared test bootstrap                        |
-| `docs/conventions.md`      | Engineering conventions and implementation recipes                    |
-| `docs/authentication-authorization-plan.md` | Security diagnosis, access matrix, and implementation record |
-| `docs/database-schema.md`  | Catalog schema documentation and reference SQL                        |
-| `docs/database-seeding.md` | Seed architecture and operational guide                               |
+| Path                                        | Purpose                                                               |
+| ------------------------------------------- | --------------------------------------------------------------------- |
+| `src/auth/`                                 | Authentication domain                                                 |
+| `src/ai/`                                   | AI aggregate: chat, RAG workflows/storage, and LLM wiring             |
+| `src/brands/`                               | Brand catalog domain and CRUD API                                     |
+| `src/categories/`                           | Hierarchical category domain and CRUD API                             |
+| `src/attributes/`                           | Reusable typed attribute domain and CRUD API                          |
+| `src/products/`                             | Product domain, base CRUD, and brand/category filters                 |
+| `src/common/`                               | Shared DTOs, entities, decorators, and types                          |
+| `src/config/`                               | Application, environment, logging, Swagger, and TypeORM configuration |
+| `src/db/`                                   | TypeORM datasource, migrations, and standalone seeds                  |
+| `test/`                                     | Integration/E2E tests and shared test bootstrap                       |
+| `docs/conventions.md`                       | Engineering conventions and implementation recipes                    |
+| `docs/authentication-authorization-plan.md` | Security diagnosis, access matrix, and implementation record          |
+| `docs/database-schema.md`                   | Catalog schema documentation and reference SQL                        |
+| `docs/database-seeding.md`                  | Seed architecture and operational guide                               |
+| `docs/rag-generation.md`                    | RAG generation gate, configuration, observability, and rollout        |
+| `docs/rag-evaluation.md`                    | Versioned RAG dataset, metrics, baseline, and calibration evidence    |
 
 ## Guard ordering
 

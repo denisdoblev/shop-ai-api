@@ -24,7 +24,9 @@ declare namespace NodeJS {
     OLLAMA_LLM_MODEL?: string;
     OLLAMA_LLM_TIMEOUT_MS?: string;
     RAG_DEFAULT_TOP_K?: string;
-    RAG_MIN_SIMILARITY?: string;
+    RAG_STRONG_SIMILARITY_THRESHOLD?: string;
+    RAG_MODERATE_SIMILARITY_THRESHOLD?: string;
+    RAG_MINIMUM_SIMILARITY_GAP?: string;
     RAG_PDF_MAX_FILE_SIZE_BYTES?: string;
     RAG_PDF_MAX_PAGES?: string;
   }
