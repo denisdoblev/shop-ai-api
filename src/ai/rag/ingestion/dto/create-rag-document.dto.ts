@@ -38,15 +38,15 @@ function IsLessThan(
 }
 
 export class CreateRagDocumentDto {
-  @ApiPropertyOptional({ default: 1200, minimum: 200, maximum: 4000 })
+  @ApiPropertyOptional({ default: 400, minimum: 200, maximum: 4000 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(200)
   @Max(4_000)
-  chunkSize: number = 1_200;
+  chunkSize: number = 400;
 
-  @ApiPropertyOptional({ default: 200, minimum: 0 })
+  @ApiPropertyOptional({ default: 80, minimum: 0 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -54,5 +54,5 @@ export class CreateRagDocumentDto {
   @IsLessThan('chunkSize', {
     message: 'chunkOverlap must be smaller than chunkSize',
   })
-  chunkOverlap: number = 200;
+  chunkOverlap: number = 80;
 }

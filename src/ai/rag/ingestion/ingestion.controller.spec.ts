@@ -12,7 +12,7 @@ describe('IngestionController', () => {
 
   it('delegates an uploaded file and validated options', async () => {
     const file = { originalname: 'manual.pdf' } as Express.Multer.File;
-    const options = { chunkSize: 1200, chunkOverlap: 200 };
+    const options = { chunkSize: 400, chunkOverlap: 80 };
     ingestionService.ingestPdf.mockResolvedValue({ id: 'document-id' });
 
     await controller.create('product-id', file, options);
@@ -27,8 +27,8 @@ describe('IngestionController', () => {
   it('rejects a missing file before delegation', () => {
     expect(() =>
       controller.create('product-id', undefined, {
-        chunkSize: 1200,
-        chunkOverlap: 200,
+        chunkSize: 400,
+        chunkOverlap: 80,
       }),
     ).toThrow(BadRequestException);
     expect(ingestionService.ingestPdf).not.toHaveBeenCalled();

@@ -12,7 +12,7 @@ describe('CreateRagDocumentDto', () => {
 
     await expect(validate(defaults)).resolves.toHaveLength(0);
     await expect(validate(transformed)).resolves.toHaveLength(0);
-    expect(defaults).toMatchObject({ chunkSize: 1200, chunkOverlap: 200 });
+    expect(defaults).toMatchObject({ chunkSize: 400, chunkOverlap: 80 });
     expect(transformed).toMatchObject({ chunkSize: 800, chunkOverlap: 100 });
   });
 

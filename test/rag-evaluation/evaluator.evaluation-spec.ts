@@ -7,12 +7,13 @@ import { hashDataset } from './reporter';
 import type { RagEvaluationCaseResult, RagEvaluationReport } from './types';
 
 describe('RAG evaluation utilities', () => {
-  it('validates the 20-case dataset and its intended composition', () => {
+  it('validates the 24-case dataset and its intended composition', () => {
     expect(() => validateDataset(RAG_EVALUATION_DATASET)).not.toThrow();
-    expect(RAG_EVALUATION_DATASET.cases).toHaveLength(20);
-    expect(countCases('FULL_ANSWER')).toBe(13);
+    expect(RAG_EVALUATION_DATASET.version).toBe('1.3.0');
+    expect(RAG_EVALUATION_DATASET.cases).toHaveLength(24);
+    expect(countCases('FULL_ANSWER')).toBe(15);
     expect(countCases('PARTIAL_ANSWER')).toBe(3);
-    expect(countCases('ABSTAIN')).toBe(4);
+    expect(countCases('ABSTAIN')).toBe(6);
   });
 
   it('rejects duplicate stable identifiers before infrastructure access', () => {
@@ -52,7 +53,8 @@ describe('RAG evaluation utilities', () => {
             },
           ],
         },
-        retrieved: [
+        retrievalMode: 'vector',
+        effectiveCandidates: [
           {
             id: 'chunk-1',
             documentId: 'document-1',
@@ -90,7 +92,86 @@ describe('RAG evaluation utilities', () => {
       expectedSourcePresent: true,
       expectedBehaviorSatisfied: true,
     });
+    expect(result).toMatchObject({
+      retrievalMode: 'vector',
+      effectiveCandidates: [
+        {
+          id: 'chunk-1',
+          evidenceKey: 'mute',
+          score: { type: 'similarity', value: 0.9 },
+        },
+      ],
+    });
     expect(result.classification).toBe('abstention/grounding failure');
+  });
+
+  it('records a lexical candidate with its typed score', () => {
+    const evaluationCase = RAG_EVALUATION_DATASET.cases.find(
+      ({ id }) => id === 'lexical-01',
+    );
+    if (evaluationCase === undefined) throw new Error('Missing lexical-01');
+
+    const result = evaluateCase(
+      evaluationCase,
+      {
+        answer: {
+          answer: 'Sí, usa Bluetooth 5.3.',
+          sources: [
+            {
+              chunkId: 'airpods-chunk',
+              documentId: 'airpods-document',
+              documentName: 'Especificaciones',
+              productId: 'airpods-product',
+              chunkIndex: 0,
+              pageStart: 1,
+              pageEnd: 1,
+              section: 'Conectividad',
+            },
+          ],
+        },
+        retrievalMode: 'lexical',
+        effectiveCandidates: [
+          {
+            id: 'airpods-chunk',
+            documentId: 'airpods-document',
+            documentName: 'Especificaciones',
+            productId: 'airpods-product',
+            content: 'Tecnología inalámbrica Bluetooth 5.3.',
+            chunkIndex: 0,
+            pageStart: 1,
+            pageEnd: 1,
+            section: 'Conectividad',
+            metadata: {},
+            lexicalScore: 0.4,
+          },
+        ],
+        retrievalDurationMs: 1,
+        generationDurationMs: 2,
+        totalDurationMs: 3,
+        observedModel: 'qwen3:8b',
+      },
+      {
+        productIdsByKey: new Map(),
+        chunkIdsByEvidenceKey: new Map([
+          ['airpods-conectividad', 'airpods-chunk'],
+        ]),
+        evidenceKeysByChunkId: new Map([
+          ['airpods-chunk', 'airpods-conectividad'],
+        ]),
+        observedEmbeddingModels: ['embeddinggemma'],
+      },
+    );
+
+    expect(result).toMatchObject({
+      retrievalMode: 'lexical',
+      effectiveCandidates: [
+        {
+          evidenceKey: 'airpods-conectividad',
+          score: { type: 'lexicalScore', value: 0.4 },
+        },
+      ],
+      firstRelevantRank: 1,
+    });
   });
 
   it('distinguishes a grounded partial answer from a complete abstention', () => {
@@ -172,12 +253,13 @@ describe('RAG evaluation utilities', () => {
 
   it('serializes a synthetic report and hashes the dataset deterministically', () => {
     const result = syntheticResult('serializable', 1, ['evidence']);
+    const datasetCaseCount = RAG_EVALUATION_DATASET.cases.length;
     const report: RagEvaluationReport = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       dataset: {
         version: RAG_EVALUATION_DATASET.version,
         sha256: hashDataset(RAG_EVALUATION_DATASET),
-        caseCount: 20,
+        caseCount: datasetCaseCount,
       },
       startedAt: '2026-01-01T00:00:00.000Z',
       finishedAt: '2026-01-01T00:00:01.000Z',
@@ -198,10 +280,11 @@ describe('RAG evaluation utilities', () => {
 
     const serialized = JSON.stringify(report);
     expect(JSON.parse(serialized)).toMatchObject({
-      schemaVersion: 3,
-      dataset: { caseCount: 20 },
+      schemaVersion: 4,
+      dataset: { caseCount: datasetCaseCount },
       results: [{ id: 'serializable' }],
     });
+    expect(report.dataset.caseCount).toBe(RAG_EVALUATION_DATASET.cases.length);
     expect(hashDataset(RAG_EVALUATION_DATASET)).toHaveLength(64);
     expect(hashDataset(RAG_EVALUATION_DATASET)).toBe(
       hashDataset(RAG_EVALUATION_DATASET),
@@ -228,7 +311,8 @@ function syntheticResult(
     expectedBehavior:
       expectedEvidenceKeys.length > 0 ? 'FULL_ANSWER' : 'ABSTAIN',
     expectedEvidenceKeys,
-    retrieved: [],
+    retrievalMode: 'vector',
+    effectiveCandidates: [],
     firstRelevantRank,
     retrievedCount: 0,
     retrievalDurationMs: 10,
@@ -281,7 +365,8 @@ function evaluatePartialBatteryCase(answer: string, includeSource: boolean) {
             ]
           : [],
       },
-      retrieved: [
+      retrievalMode: 'vector',
+      effectiveCandidates: [
         {
           id: 'chunk-battery',
           documentId: 'document-1',

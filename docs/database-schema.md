@@ -78,6 +78,13 @@ non-null vector whose dimension is not 768, then converts `embedding` to
 drops that index and widens the column back to dimensionless `vector` without
 rewriting or deleting embedding values.
 
+`1790121600000-AddRagChunkSpanishFtsIndex.ts` adds the partial GIN index
+`idx_rag_chunks_spanish_fts_active` over
+`to_tsvector('spanish', coalesce(section, '') || ' ' || content)` for active
+chunks. The lexical retrieval predicate uses that same expression. The language
+is intentionally fixed to Spanish in this version. Rollback drops only this
+index; documents, chunks, and embeddings are not rewritten or removed.
+
 Rollback of the original table migration removes the chunk foreign key and
 indexes, then `rag_chunks`, followed by the document foreign key and indexes and
 `rag_documents`. It does not modify `products` or remove the `vector` extension.

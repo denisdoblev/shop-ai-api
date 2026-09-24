@@ -2,9 +2,9 @@ import {
   buildGroundingPrompt,
   INSUFFICIENT_INFORMATION_ANSWER,
 } from './grounding-prompt';
-import { RetrievedChunk } from './retrieval/retrieval.service';
+import { RagContextChunk } from './retrieval/retrieval.service';
 
-const chunk: RetrievedChunk = {
+const chunk: RagContextChunk = {
   id: 'chunk-id',
   documentId: 'document-id',
   documentName: 'Manual técnico',
@@ -15,7 +15,6 @@ const chunk: RetrievedChunk = {
   pageEnd: 14,
   section: null,
   metadata: {},
-  similarity: 0.8,
 };
 
 describe('buildGroundingPrompt', () => {

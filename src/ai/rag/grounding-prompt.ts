@@ -1,5 +1,5 @@
 import { GenerateInput } from '../llm/llm-provider.interface';
-import { RetrievedChunk } from './retrieval/retrieval.service';
+import { RagContextChunk } from './retrieval/retrieval.service';
 
 export const INSUFFICIENT_INFORMATION_ANSWER =
   'No dispongo de información suficiente en las fuentes proporcionadas para responder la pregunta.';
@@ -15,7 +15,7 @@ Do not invent citations, document names, or page numbers.`;
 
 export function buildGroundingPrompt(
   question: string,
-  chunks: RetrievedChunk[],
+  chunks: RagContextChunk[],
 ): GenerateInput {
   if (chunks.length === 0) {
     throw new Error('At least one source chunk is required');

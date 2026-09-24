@@ -30,9 +30,14 @@ unique constraint also maps concurrent duplicate uploads to HTTP 409.
 
 - `RAG_PDF_MAX_FILE_SIZE_BYTES` defaults to `26214400` (25 MiB).
 - `RAG_PDF_MAX_PAGES` defaults to `500`.
-- `chunkSize` defaults to `1200` and accepts `200` through `4000` characters.
-- `chunkOverlap` defaults to `200`, must be non-negative, and must be smaller
+- `chunkSize` defaults to `400` and accepts `200` through `4000` characters.
+- `chunkOverlap` defaults to `80`, must be non-negative, and must be smaller
   than `chunkSize`.
+
+These defaults apply only to new uploads. Existing documents retain the chunk
+configuration recorded in `rag_documents.metadata`; upload a PDF again as new
+content to ingest it with `400/80`. The API does not reindex existing documents
+or replace an active document with the same content hash.
 
 The endpoint does not create local files and does not use object storage. The
 current synchronous design persists only completed documents; the other status

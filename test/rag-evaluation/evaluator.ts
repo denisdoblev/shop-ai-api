@@ -6,11 +6,16 @@ import type {
   SeededRagEvaluationCorpus,
 } from './types';
 import type { RagAnswer } from '../../src/ai/rag/rag.service';
-import type { RetrievedChunk } from '../../src/ai/rag/retrieval/retrieval.service';
+import type {
+  LexicalRetrievedChunk,
+  RetrievedChunk,
+} from '../../src/ai/rag/retrieval/retrieval.service';
+import type { RagEvaluationRetrievalMode } from './types';
 
 export interface EvaluationObservation {
   answer: RagAnswer;
-  retrieved: RetrievedChunk[];
+  retrievalMode: RagEvaluationRetrievalMode;
+  effectiveCandidates: Array<RetrievedChunk | LexicalRetrievedChunk>;
   retrievalDurationMs: number;
   generationDurationMs: number | null;
   totalDurationMs: number;
@@ -39,8 +44,8 @@ export function evaluateCase(
       return chunkId;
     }),
   );
-  const firstRelevantIndex = observation.retrieved.findIndex(({ id }) =>
-    expectedChunkIds.has(id),
+  const firstRelevantIndex = observation.effectiveCandidates.findIndex(
+    ({ id }) => expectedChunkIds.has(id),
   );
   const normalizedAnswer = normalizeText(observation.answer.answer);
   const requiredAnswerTermGroupsPresent = groupsPresent(
@@ -152,18 +157,22 @@ export function evaluateCase(
       : { productKey: evaluationCase.productKey }),
     expectedBehavior: evaluationCase.expectedBehavior,
     expectedEvidenceKeys: evaluationCase.expectedEvidenceKeys,
-    retrieved: observation.retrieved.map((chunk) => ({
+    retrievalMode: observation.retrievalMode,
+    effectiveCandidates: observation.effectiveCandidates.map((chunk) => ({
       id: chunk.id,
       documentId: chunk.documentId,
       documentName: chunk.documentName,
       productId: chunk.productId,
       chunkIndex: chunk.chunkIndex,
-      similarity: chunk.similarity,
       evidenceKey: corpus.evidenceKeysByChunkId.get(chunk.id) ?? null,
+      score:
+        'lexicalScore' in chunk
+          ? { type: 'lexicalScore' as const, value: chunk.lexicalScore }
+          : { type: 'similarity' as const, value: chunk.similarity },
     })),
     firstRelevantRank:
       firstRelevantIndex === -1 ? null : firstRelevantIndex + 1,
-    retrievedCount: observation.retrieved.length,
+    retrievedCount: observation.effectiveCandidates.length,
     retrievalDurationMs: observation.retrievalDurationMs,
     generationDurationMs: observation.generationDurationMs,
     totalDurationMs: observation.totalDurationMs,

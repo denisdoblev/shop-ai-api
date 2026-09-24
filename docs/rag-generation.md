@@ -1,24 +1,40 @@
 # Grounded RAG generation
 
-The internal `RagService` owns the complete answer workflow. It accepts a
-question plus optional `productId` and `topK`, retrieves vector-ranked chunks,
-evaluates the top two similarities through a configurable relevance gate,
+`RagService` owns the complete answer workflow. It accepts a
+question plus optional `productId` and `topK`, attempts a strict Spanish lexical
+match and otherwise retrieves vector-ranked chunks, evaluates the top two
+similarities through a configurable relevance gate,
 constructs a source-delimited grounding prompt, and delegates generation to the
-provider-neutral `LlmService`. There is no public chat handler yet.
+provider-neutral `LlmService`. The authenticated single-turn HTTP entry point is
+`POST /api/ai/ask`; the empty chat scaffold remains unexposed.
 
 Omitting `productId` performs global retrieval. When supplied, `productId` must
 be a valid UUID and scopes retrieval to that product; invalid values are
-rejected before embeddings, database access, or generation.
+rejected before embeddings, database access, or generation. `RagService`
+additionally verifies that a supplied product is active before retrieval and
+retains it for query enrichment. The HTTP DTO always requires `productId`, while
+internal callers retain the global retrieval option.
+
+The HTTP endpoint uses the configured default `topK`, accepts users and admins,
+and returns `200` for both generated answers and canonical insufficiency with an
+empty `sources` array. Missing products return `404`. Normalized embedding and
+LLM provider failures return `503`, except LLM timeouts, which return `504`.
+Unexpected retrieval and database failures remain standard `500` errors without
+leaking internal details.
 
 ## Runtime flow
 
 ```text
 RagService.answer()
-  -> RetrievalService.retrieve()
-     -> EmbeddingsService.embedQuery()
-     -> PostgreSQL/pgvector cosine search
-  -> relevance gate (top 1 absolute similarity or top 1/top 2 separation)
-     -> insufficient relevance: deterministic insufficiency answer
+  -> RetrievalService.findBestLexicalMatch()
+     -> PostgreSQL FTS (Spanish AND semantics, best active ready chunk)
+     -> match: use exactly that chunk and skip embeddings/vector retrieval
+     -> no match: RetrievalService.retrieve()
+        -> enrich the embedding query with the selected product name
+        -> EmbeddingsService.embedQuery()
+        -> PostgreSQL/pgvector cosine search
+        -> relevance gate (top 1 absolute similarity or top 1/top 2 separation)
+           -> insufficient relevance: deterministic insufficiency answer
   -> buildGroundingPrompt()
   -> LlmService.generate()
      -> LLM_PROVIDER
@@ -29,6 +45,34 @@ RagService.answer()
 uses `qwen3:8b` by default, sends `stream: false`, `think: false`, and
 temperature zero, and consumes only the final `message.content`. Embedding and
 generation timeouts are intentionally independent.
+
+Before SQL, lexical retrieval removes question/exclamation marks and only the
+Spanish interrogatives `qué`, `cuál/es`, `cuánto/a/os/as`, `cuán`, `cómo`,
+`dónde`/`adónde`, `cuándo` and `quién/es`, comparing those words without case or
+accent distinctions. It preserves every other term, including numbers and
+hyphens, and returns no match without querying PostgreSQL when nothing remains.
+The normalized text is passed to `plainto_tsquery('spanish', query)` against
+`to_tsvector('spanish', coalesce(section, '') || ' ' || content)`. Normal query
+terms are combined with AND semantics after Spanish stop-word removal and
+stemming, so every significant term must occur in the same chunk and user input
+cannot introduce query operators. This version does not add an OR mode, query
+rewriting, fusion, lexical thresholds, or language configuration. Ranking uses
+cover-density rank descending, then shorter content, then chunk UUID for a stable
+winner. The query retains the active chunk,
+active/ready document, active product, and optional product filters from vector
+retrieval; it neither reads nor validates embeddings.
+
+`RagService` always gives lexical retrieval the original trimmed question. On a
+lexical miss with a selected product, only the vector embedding query becomes:
+
+```text
+Producto seleccionado: <product.name>
+Pregunta del usuario: <pregunta original>
+```
+
+Internal calls without `productId` keep the vector query unchanged. Prompt
+generation and the public answer continue to use the original question; stored
+chunk embeddings, relevance thresholds and context selection are unchanged.
 
 The prompt requires the model to use only the supplied chunks, treat chunk
 content as untrusted data, avoid unsupported product comparisons, and return
@@ -76,10 +120,13 @@ interface RagAnswer {
 }
 ```
 
-Sources are mapped directly from the exact chunks included in the prompt. They
-do not expose embeddings, chunk content, arbitrary metadata, or model-generated
-citations. Page values come from the relational `page_start`/`page_end` fields;
-text documents can therefore report honest `null` pages.
+Sources are mapped directly from the exact chunks included in the prompt, except
+that the canonical insufficiency answer always returns an empty source list. This
+prevents an LLM abstention after an admitted vector result from presenting that
+result as supporting evidence. Sources do not expose embeddings, chunk content,
+arbitrary metadata, or model-generated citations. Page values come from the
+relational `page_start`/`page_end` fields; text documents can therefore report
+honest `null` pages.
 
 ## Configuration
 
@@ -113,9 +160,12 @@ the complete gate decision without logging question or chunk content:
 | Field             | Meaning                                                   |
 | ----------------- | --------------------------------------------------------- |
 | `event`           | Always `rag_retrieval_completed`                          |
+| `retrievalMode`   | `lexical` for the fast path, otherwise `vector`           |
 | `retrievedChunks` | Number of ranked results returned by retrieval            |
 | `includedChunks`  | Number of chunks supplied to the grounding prompt         |
+| `lexicalMatches`  | `1` on the lexical fast path; otherwise `0`               |
 | `durationMs`      | Retrieval duration; it excludes LLM generation            |
+| `lexicalScore`    | Best FTS score on the lexical path; otherwise `null`      |
 | `top1Similarity`  | First similarity, or `null` when retrieval is empty       |
 | `top2Similarity`  | Second similarity, or `null` with fewer than two results  |
 | `similarityGap`   | `top1Similarity - top2Similarity`, or `null` without both |
@@ -126,6 +176,7 @@ the complete gate decision without logging question or chunk content:
 | `strong_similarity`            | Top 1 met the strong absolute threshold                 |
 | `moderate_similarity_with_gap` | Top 1 met the moderate threshold and the minimum gap    |
 | `insufficient_relevance`       | No generation branch matched; the pipeline must abstain |
+| `lexical_match`                | One strict complete lexical match bypassed embeddings   |
 
 The event is emitted for both generation and abstention paths. Operationally,
 `reason=insufficient_relevance` with no later LLM completion is an intentional
@@ -133,18 +184,24 @@ gate rejection, not an LLM failure.
 
 ## Deployment and rollback
 
-This is a configuration and orchestration change only. It does not require a
-database migration, schema change, reingestion, re-embedding, or index rebuild.
+Apply `AddRagChunkSpanishFtsIndex` before deploying the application. The
+migration adds only a partial GIN index; it does not require reingestion or
+re-embedding and adds no environment variable.
 
 Rollout checklist:
 
-1. Replace any `RAG_MIN_SIMILARITY` override with all three new variables.
-2. Validate that moderate similarity does not exceed strong similarity.
-3. Restart the application so `ConfigModule` validates and loads the new values.
-4. Run `pnpm test:rag-eval` against the safe `_test` database and compare the
+1. Apply pending migrations, including the Spanish FTS index.
+2. Replace any `RAG_MIN_SIMILARITY` override with all three new variables.
+3. Validate that moderate similarity does not exceed strong similarity.
+4. Restart the application so `ConfigModule` validates and loads the new values.
+5. Run `pnpm test:rag-eval` against the safe `_test` database and compare the
    dataset version and SHA-256 before comparing metrics.
-5. Monitor decision reasons, null similarities, false abstentions, false answers,
+6. Monitor retrieval modes, decision reasons, null similarities, false abstentions, false answers,
    and grounding failures. Do not log chunk content.
+
+Rollback order is application first and index second. After the old application
+is running, revert the migration; its `down` removes only the FTS index. Vector
+retrieval, stored documents, and embeddings remain unchanged.
 
 To emulate the previous absolute `similarity >= 0.50` gate while keeping the new
 code, set both strong and moderate thresholds to `0.50`; the strong branch then

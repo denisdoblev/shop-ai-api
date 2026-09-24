@@ -1,5 +1,3 @@
-import type { RetrievedChunk } from '../../src/ai/rag/retrieval/retrieval.service';
-
 export type RagEvaluationExpectedBehavior =
   | 'FULL_ANSWER'
   | 'PARTIAL_ANSWER'
@@ -66,23 +64,30 @@ export interface GenerationChecks {
   expectedBehaviorSatisfied: boolean;
 }
 
+export type RagEvaluationRetrievalMode = 'lexical' | 'vector';
+
+export type RagEvaluationRetrievalScore =
+  | { type: 'lexicalScore'; value: number }
+  | { type: 'similarity'; value: number };
+
+export interface RagEvaluationCandidate {
+  id: string;
+  documentId: string;
+  documentName: string;
+  productId: string;
+  chunkIndex: number;
+  evidenceKey: string | null;
+  score: RagEvaluationRetrievalScore;
+}
+
 export interface RagEvaluationCaseResult {
   id: string;
   question: string;
   productKey?: string;
   expectedBehavior: RagEvaluationExpectedBehavior;
   expectedEvidenceKeys: string[];
-  retrieved: Array<
-    Pick<
-      RetrievedChunk,
-      | 'id'
-      | 'documentId'
-      | 'documentName'
-      | 'productId'
-      | 'chunkIndex'
-      | 'similarity'
-    > & { evidenceKey: string | null }
-  >;
+  retrievalMode: RagEvaluationRetrievalMode;
+  effectiveCandidates: RagEvaluationCandidate[];
   firstRelevantRank: number | null;
   retrievedCount: number;
   retrievalDurationMs: number;
@@ -124,7 +129,7 @@ export interface RagEvaluationMetrics {
 }
 
 export interface RagEvaluationReport {
-  schemaVersion: 3;
+  schemaVersion: 4;
   dataset: { version: string; sha256: string; caseCount: number };
   startedAt: string;
   finishedAt: string;

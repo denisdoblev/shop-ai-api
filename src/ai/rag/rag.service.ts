@@ -1,12 +1,24 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  GatewayTimeoutException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
 import { isUUID } from 'class-validator';
+import { Repository } from 'typeorm';
+import { Product } from '../../products/entities/product.entity';
+import { LlmProviderError } from '../llm/llm-provider.error';
 import { LlmService } from '../llm/llm.service';
+import { EmbeddingProviderError } from './embeddings/embedding-provider.error';
 import {
   buildGroundingPrompt,
   INSUFFICIENT_INFORMATION_ANSWER,
 } from './grounding-prompt';
 import {
+  RagContextChunk,
   RetrievedChunk,
   RetrievalService,
 } from './retrieval/retrieval.service';
@@ -42,6 +54,8 @@ export class RagService {
     private readonly retrievalService: RetrievalService,
     private readonly llmService: LlmService,
     private readonly configService: ConfigService,
+    @InjectRepository(Product)
+    private readonly productRepository: Repository<Product>,
   ) {}
 
   async answer(input: RagQuestion): Promise<RagAnswer> {
@@ -52,6 +66,16 @@ export class RagService {
 
     if (input.productId !== undefined && !isUUID(input.productId)) {
       throw new TypeError('productId must be a valid UUID');
+    }
+
+    let product: Product | null = null;
+    if (input.productId !== undefined) {
+      product = await this.productRepository.findOneBy({ id: input.productId });
+      if (product === null) {
+        throw new NotFoundException(
+          `Product with id ${input.productId} not found`,
+        );
+      }
     }
 
     const topK =
@@ -75,10 +99,47 @@ export class RagService {
       ),
     };
     const retrievalStartedAt = Date.now();
-    const retrieved = await this.retrievalService.retrieve(question, {
-      topK,
-      ...(input.productId === undefined ? {} : { productId: input.productId }),
-    });
+    const retrievalOptions =
+      input.productId === undefined ? {} : { productId: input.productId };
+    const lexicalMatch = await this.retrievalService.findBestLexicalMatch(
+      question,
+      retrievalOptions,
+    );
+    if (lexicalMatch !== null) {
+      const chunks = [lexicalMatch];
+      this.logRetrievalCompleted({
+        mode: 'lexical',
+        retrievedChunks: 1,
+        chunks,
+        durationMs: Date.now() - retrievalStartedAt,
+        lexicalScore: lexicalMatch.lexicalScore,
+        top1Similarity: null,
+        top2Similarity: null,
+        similarityGap: null,
+        reason: 'lexical_match',
+      });
+      return this.generateAnswer(question, chunks);
+    }
+
+    let retrieved: RetrievedChunk[];
+    try {
+      const vectorQuery =
+        product === null
+          ? question
+          : `Producto seleccionado: ${product.name}\nPregunta del usuario: ${question}`;
+      retrieved = await this.retrievalService.retrieve(vectorQuery, {
+        topK,
+        ...retrievalOptions,
+      });
+    } catch (error: unknown) {
+      if (error instanceof EmbeddingProviderError) {
+        throw new ServiceUnavailableException(
+          'Embedding provider is unavailable',
+        );
+      }
+      throw error;
+    }
+
     const retrievalDurationMs = Date.now() - retrievalStartedAt;
     const relevance = evaluateRelevance(retrieved, relevanceThresholds);
     const chunks = this.selectContextChunks(
@@ -87,11 +148,12 @@ export class RagService {
       relevanceThresholds,
     );
 
-    this.logger.debug({
-      event: 'rag_retrieval_completed',
+    this.logRetrievalCompleted({
+      mode: 'vector',
       retrievedChunks: retrieved.length,
-      includedChunks: chunks.length,
+      chunks,
       durationMs: retrievalDurationMs,
+      lexicalScore: null,
       top1Similarity: relevance.top1Similarity,
       top2Similarity: relevance.top2Similarity,
       similarityGap: relevance.similarityGap,
@@ -102,13 +164,36 @@ export class RagService {
       return { answer: INSUFFICIENT_INFORMATION_ANSWER, sources: [] };
     }
 
-    const output = await this.llmService.generate(
-      buildGroundingPrompt(question, chunks),
-    );
+    return this.generateAnswer(question, chunks);
+  }
+
+  private async generateAnswer(
+    question: string,
+    chunks: RagContextChunk[],
+  ): Promise<RagAnswer> {
+    let output;
+    try {
+      output = await this.llmService.generate(
+        buildGroundingPrompt(question, chunks),
+      );
+    } catch (error: unknown) {
+      if (error instanceof LlmProviderError) {
+        if (error.code === 'timeout') {
+          throw new GatewayTimeoutException('Generation provider timed out');
+        }
+        throw new ServiceUnavailableException(
+          'Generation provider is unavailable',
+        );
+      }
+      throw error;
+    }
 
     return {
       answer: output.text,
-      sources: chunks.map((chunk) => this.toSource(chunk)),
+      sources:
+        output.text === INSUFFICIENT_INFORMATION_ANSWER
+          ? []
+          : chunks.map((chunk) => this.toSource(chunk)),
     };
   }
 
@@ -128,7 +213,37 @@ export class RagService {
     return [];
   }
 
-  private toSource(chunk: RetrievedChunk): RagSource {
+  private logRetrievalCompleted(input: {
+    mode: 'lexical' | 'vector';
+    retrievedChunks: number;
+    chunks: RagContextChunk[];
+    durationMs: number;
+    lexicalScore: number | null;
+    top1Similarity: number | null;
+    top2Similarity: number | null;
+    similarityGap: number | null;
+    reason:
+      | 'lexical_match'
+      | 'strong_similarity'
+      | 'moderate_similarity_with_gap'
+      | 'insufficient_relevance';
+  }): void {
+    this.logger.debug({
+      event: 'rag_retrieval_completed',
+      retrievalMode: input.mode,
+      retrievedChunks: input.retrievedChunks,
+      includedChunks: input.chunks.length,
+      lexicalMatches: input.mode === 'lexical' ? input.retrievedChunks : 0,
+      durationMs: input.durationMs,
+      lexicalScore: input.lexicalScore,
+      top1Similarity: input.top1Similarity,
+      top2Similarity: input.top2Similarity,
+      similarityGap: input.similarityGap,
+      reason: input.reason,
+    });
+  }
+
+  private toSource(chunk: RagContextChunk): RagSource {
     return {
       chunkId: chunk.id,
       documentId: chunk.documentId,

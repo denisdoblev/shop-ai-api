@@ -1,7 +1,7 @@
 import type { RagEvaluationDataset } from './types';
 
 export const RAG_EVALUATION_DATASET: RagEvaluationDataset = {
-  version: '1.1.0',
+  version: '1.3.0',
   products: [
     {
       key: 'auricular-conference-pro',
@@ -120,6 +120,45 @@ export const RAG_EVALUATION_DATASET: RagEvaluationDataset = {
                 'La cafetera cuenta con 24 meses de garantía para defectos de fabricación. La acumulación de sarro queda excluida.',
               page: 2,
               section: 'Cobertura',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      key: 'airpods-pro-2',
+      name: 'AirPods Pro 2',
+      slug: 'rag-eval-airpods-pro-2',
+      documents: [
+        {
+          key: 'airpods-pro-2-especificaciones',
+          name: 'Especificaciones técnicas de los AirPods Pro 2',
+          chunks: [
+            {
+              evidenceKey: 'airpods-conectividad',
+              content:
+                'Los AirPods Pro 2 incorporan el chip H2, cancelación activa de ruido, audio adaptativo, modo de sonido ambiente y detección de conversación. Los auriculares y el estuche de carga son resistentes al polvo, al agua y al sudor. Ofrecen hasta 6 horas de reproducción de audio con una sola carga y hasta 30 horas con el estuche. La conectividad utiliza tecnología inalámbrica Bluetooth 5.3. Se pueden usar con dispositivos Apple actualizados y como auriculares Bluetooth con otros dispositivos, aunque algunas funciones pueden estar limitadas.',
+              page: 1,
+              section: 'Especificaciones técnicas',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      key: 'auriculares-travel-mini',
+      name: 'Auriculares Travel Mini',
+      slug: 'rag-eval-auriculares-travel-mini',
+      documents: [
+        {
+          key: 'auriculares-travel-mini-ficha',
+          name: 'Ficha técnica de Auriculares Travel Mini',
+          chunks: [
+            {
+              evidenceKey: 'travel-mini-peso',
+              content: 'Peso: 384,8 g.',
+              page: 1,
+              section: 'Especificaciones físicas',
             },
           ],
         },
@@ -354,6 +393,42 @@ export const RAG_EVALUATION_DATASET: RagEvaluationDataset = {
         ['sarro'],
       ],
       forbiddenTerms: ['incluye el sarro', 'cubre el sarro'],
+    },
+    {
+      id: 'lexical-01',
+      productKey: 'airpods-pro-2',
+      question: '¿Tiene Bluetooth?',
+      expectedEvidenceKeys: ['airpods-conectividad'],
+      expectedBehavior: 'FULL_ANSWER',
+      requiredAnswerTermGroups: [['bluetooth']],
+      forbiddenTerms: [],
+    },
+    {
+      id: 'lexical-weight-01',
+      productKey: 'auriculares-travel-mini',
+      question: '¿Cuánto pesan?',
+      expectedEvidenceKeys: ['travel-mini-peso'],
+      expectedBehavior: 'FULL_ANSWER',
+      requiredAnswerTermGroups: [['384,8 g', '384.8 g']],
+      forbiddenTerms: [],
+    },
+    {
+      id: 'lexical-unsupported-01',
+      productKey: 'airpods-pro-2',
+      question: '¿Qué alcance tiene Bluetooth?',
+      expectedEvidenceKeys: [],
+      expectedBehavior: 'ABSTAIN',
+      requiredAnswerTermGroups: [],
+      forbiddenTerms: ['metros', 'pies'],
+    },
+    {
+      id: 'lexical-unsupported-02',
+      productKey: 'airpods-pro-2',
+      question: '¿Qué códecs Bluetooth admite?',
+      expectedEvidenceKeys: [],
+      expectedBehavior: 'ABSTAIN',
+      requiredAnswerTermGroups: [],
+      forbiddenTerms: ['aac', 'sbc', 'aptx', 'ldac'],
     },
   ],
 };

@@ -33,7 +33,7 @@ describe('IngestionService', () => {
     size: 12,
     buffer: Buffer.from('%PDF-manual'),
   } as Express.Multer.File;
-  const options = { chunkSize: 1200, chunkOverlap: 200 };
+  const options = { chunkSize: 400, chunkOverlap: 80 };
   const productRepository = {
     findOneBy: jest.fn<Promise<Product | null>, [{ id: string }]>(),
   };
@@ -149,6 +149,7 @@ describe('IngestionService', () => {
         pageCount: 2,
         fileSizeBytes: '12',
         processingError: null,
+        metadata: { chunkSize: 400, chunkOverlap: 80 },
       }),
     );
     expect(txChunkRepository.create).toHaveBeenNthCalledWith(

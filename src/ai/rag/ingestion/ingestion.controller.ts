@@ -45,9 +45,9 @@ export class IngestionController {
           type: 'integer',
           minimum: 200,
           maximum: 4000,
-          default: 1200,
+          default: 400,
         },
-        chunkOverlap: { type: 'integer', minimum: 0, default: 200 },
+        chunkOverlap: { type: 'integer', minimum: 0, default: 80 },
       },
     },
   })

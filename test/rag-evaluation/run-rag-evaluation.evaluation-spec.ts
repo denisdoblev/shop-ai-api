@@ -8,6 +8,8 @@ import { RagService } from '../../src/ai/rag/rag.service';
 import type { RagAnswer } from '../../src/ai/rag/rag.service';
 import { RetrievalService } from '../../src/ai/rag/retrieval/retrieval.service';
 import type {
+  LexicalRetrievedChunk,
+  LexicalRetrievalOptions,
   RetrievedChunk,
   RetrievalOptions,
 } from '../../src/ai/rag/retrieval/retrieval.service';
@@ -18,7 +20,11 @@ import { evaluateCase } from './evaluator';
 import { calculateMetrics } from './metrics';
 import { hashDataset, printSummary, writeReport } from './reporter';
 import { seedRagEvaluationCorpus } from './seeder';
-import type { RagEvaluationCaseResult, RagEvaluationReport } from './types';
+import type {
+  RagEvaluationCaseResult,
+  RagEvaluationReport,
+  RagEvaluationRetrievalMode,
+} from './types';
 
 describe('RAG evaluation baseline', () => {
   jest.setTimeout(20 * 60_000);
@@ -35,7 +41,7 @@ describe('RAG evaluation baseline', () => {
     const results: RagEvaluationCaseResult[] = [];
     let observedEmbeddingModels: string[] = [];
     const baseReport = {
-      schemaVersion: 3 as const,
+      schemaVersion: 4 as const,
       dataset: {
         version: RAG_EVALUATION_DATASET.version,
         sha256: hashDataset(RAG_EVALUATION_DATASET),
@@ -67,13 +73,40 @@ describe('RAG evaluation baseline', () => {
       const ragService = app.get(RagService);
       const retrievalService = app.get(RetrievalService);
       const llmService = app.get(LlmService);
+      const originalFindBestLexicalMatch =
+        retrievalService.findBestLexicalMatch.bind(retrievalService);
       const originalRetrieve = retrievalService.retrieve.bind(retrievalService);
       const originalGenerate = llmService.generate.bind(llmService);
-      let retrieved: RetrievedChunk[] = [];
+      let retrievalMode: RagEvaluationRetrievalMode = 'vector';
+      let effectiveCandidates: Array<RetrievedChunk | LexicalRetrievedChunk> =
+        [];
       let retrievalDurationMs = 0;
       let generationDurationMs: number | null = null;
       let observedModel: string | null = null;
 
+      jest
+        .spyOn(retrievalService, 'findBestLexicalMatch')
+        .mockImplementation(
+          async (
+            question: string,
+            options?: LexicalRetrievalOptions,
+          ): Promise<LexicalRetrievedChunk | null> => {
+            const callStartedAt = performance.now();
+            try {
+              const match = await originalFindBestLexicalMatch(
+                question,
+                options,
+              );
+              if (match !== null) {
+                retrievalMode = 'lexical';
+                effectiveCandidates = [match];
+              }
+              return match;
+            } finally {
+              retrievalDurationMs += performance.now() - callStartedAt;
+            }
+          },
+        );
       jest
         .spyOn(retrievalService, 'retrieve')
         .mockImplementation(
@@ -83,10 +116,12 @@ describe('RAG evaluation baseline', () => {
           ): Promise<RetrievedChunk[]> => {
             const callStartedAt = performance.now();
             try {
-              retrieved = await originalRetrieve(query, options);
+              const retrieved = await originalRetrieve(query, options);
+              retrievalMode = 'vector';
+              effectiveCandidates = retrieved;
               return retrieved;
             } finally {
-              retrievalDurationMs = performance.now() - callStartedAt;
+              retrievalDurationMs += performance.now() - callStartedAt;
             }
           },
         );
@@ -106,7 +141,8 @@ describe('RAG evaluation baseline', () => {
         );
 
       for (const evaluationCase of RAG_EVALUATION_DATASET.cases) {
-        retrieved = [];
+        retrievalMode = 'vector';
+        effectiveCandidates = [];
         retrievalDurationMs = 0;
         generationDurationMs = null;
         observedModel = null;
@@ -134,7 +170,8 @@ describe('RAG evaluation baseline', () => {
             evaluationCase,
             {
               answer,
-              retrieved,
+              retrievalMode,
+              effectiveCandidates,
               retrievalDurationMs,
               generationDurationMs,
               totalDurationMs: performance.now() - callStartedAt,

@@ -30,18 +30,31 @@ modelos configurados y observados.
 
 ## Dataset
 
-`test/rag-evaluation/dataset.ts` contiene dos productos, cuatro documentos y
+`test/rag-evaluation/dataset.ts` contiene cuatro productos, seis documentos y
 evidencias con claves estables. Los UUID se resuelven después de persistir los
 fixtures y cada chunk conserva `evidenceKey` en `metadata`.
 
-La versión `1.1.0` tiene 20 casos y modela el comportamiento esperado sin un
+La versión `1.3.0` tiene 24 casos y modela el comportamiento esperado sin un
 booleano ambiguo:
 
-- 13 casos `FULL_ANSWER`, donde toda la pregunta tiene respaldo.
+- 15 casos `FULL_ANSWER`, donde toda la pregunta tiene respaldo.
 - 3 casos `PARTIAL_ANSWER`, donde se debe responder la parte respaldada e
   identificar explícitamente el dato que falta.
-- 4 casos `ABSTAIN`, donde se espera la respuesta canónica de insuficiencia sin
+- 6 casos `ABSTAIN`, donde se espera la respuesta canónica de insuficiencia sin
   sources.
+
+Los tres casos de la versión 1.2.0 comparten un chunk largo basado en la
+[ficha técnica oficial de AirPods Pro 2](https://support.apple.com/es-es/111834):
+la pregunta general sobre Bluetooth debe usar el fast path y citarlo; las
+preguntas sobre alcance y códecs no pueden pasar el AND léxico porque esos datos
+no aparecen en el chunk y deben continuar absteniéndose.
+
+La versión 1.3.0 agrega un producto aislado con la evidencia `Peso: 384,8 g` y
+el caso `lexical-weight-01` (`¿Cuánto pesan?`). El interrogativo se elimina antes
+de FTS, `pesan` se relaciona con `Peso` mediante el diccionario español y el caso
+debe resolverse por el fast path sin invocar embeddings. En misses léxicos con
+producto, la consulta vectorial incorpora exclusivamente `product.name` y la
+pregunta original; el prompt conserva la pregunta sin enriquecer.
 
 Cada caso declara opcionalmente `productKey`, alternativas válidas en
 `expectedEvidenceKeys`, `expectedBehavior`, grupos de términos de respuesta y
@@ -57,8 +70,10 @@ usar la frase para delimitar otro dato ausente sin penalizar el comportamiento.
 
 ## Métricas y diagnóstico
 
-Retrieval reporta Hit@1, Hit@3, Hit@5, primera posición relevante, resultados con
-similarity y duración. Los casos sin evidencia esperada quedan fuera de esos
+Retrieval reporta Hit@1, Hit@3, Hit@5, primera posición relevante, modo,
+candidatos efectivos con score tipado y duración. Un caso léxico registra sólo
+su ganador con `lexicalScore`; un caso vectorial registra el top 5 con
+`similarity`. Los casos sin evidencia esperada quedan fuera de esos
 denominadores; los parcialmente respondibles sí participan.
 
 Generation registra respuesta o abstención, grupos esperados, términos prohibidos,
@@ -85,7 +100,7 @@ la suite; no hay skips silenciosos.
 ## Contrato del artefacto
 
 Cada ejecución reemplaza `artifacts/rag-evaluation.json`, ignorado por Git. El
-schema actual es la versión 3 e incluye:
+schema actual es la versión 4 e incluye:
 
 - `dataset`: versión, SHA-256 y cantidad de casos; sólo se comparan corridas
   apples-to-apples cuando estos tres valores coinciden;
@@ -93,14 +108,49 @@ schema actual es la versión 3 e incluye:
   realmente observados;
 - `metrics`: retrieval, comportamiento por tipo esperado, falsos rechazos,
   falsas respuestas y clasificación primaria;
-- `results`: pregunta, comportamiento esperado, top 5 con similarity y
-  `evidenceKey`, rank relevante, respuesta, sources, checks y diagnósticos;
+- `results`: pregunta, comportamiento esperado, `retrievalMode`, candidatos
+  efectivos con `score: { type, value }` y `evidenceKey`, rank relevante,
+  respuesta, sources, checks y diagnósticos;
 - `infrastructureFailure`: `null` en una corrida válida o el error que invalida
   la comparación.
 
 `generationDurationMs=null` y `observedModel=null` indican que el LLM no fue
 invocado. Si ambos tienen valor, un eventual `generation failure` ocurrió después
 del gate y no debe corregirse ajustando thresholds sin una hipótesis separada.
+
+## Verificación 1.2.0 del fast path léxico
+
+La corrida de aceptación usa dataset `1.2.0`, SHA-256
+`14addb68774a215e4e94e659e72ea1c64ccd9b3757ca0ace4cfd3e37b35a891d` y 23
+casos. Mantiene Hit@1/3/5 de 100%, cero falsas abstenciones, cero falsas
+respuestas, cero fallos de retrieval y cero fallos de grounding. El caso
+`lexical-01` registra `retrievalMode=lexical`, un candidato con
+`score.type=lexicalScore`, genera una respuesta sobre Bluetooth 5.3 y cita el
+chunk de AirPods. Los casos `lexical-unsupported-01` y
+`lexical-unsupported-02` registran `retrievalMode=vector` y terminan en la
+abstención canónica porque FTS no encontró todos sus términos y el gate vectorial
+fue insuficiente.
+
+La corrida produjo 20/23 comportamientos correctos. Los tres fallos restantes
+son de generación ya conocidos o equivalentes (`answer-10`, `partial-02` y
+`partial-03`); no son falsas respuestas, falsas abstenciones ni regresiones de
+retrieval.
+
+## Verificación 1.3.0 del enriquecimiento de recuperación
+
+La corrida de aceptación usa dataset `1.3.0`, SHA-256
+`ba33f5c9e5fd067959710d38babb9ad8b0a1f864fffd975c9f55e0ad2310346c` y 24
+casos. Mantiene Hit@1/3/5 de 100%, 0 respuestas falsas, 0 fallos de retrieval y
+0 fallos de abstención/grounding. `lexical-weight-01` registra
+`retrievalMode=lexical`, evidencia `travel-mini-peso` en rank 1 y una respuesta
+respaldada por `384,8 g`.
+
+La corrida produjo 21/24 comportamientos correctos: 14/15 `FULL_ANSWER`, 1/3
+`PARTIAL_ANSWER` y 6/6 `ABSTAIN`. Quedaron tres fallos de generación
+(`answer-10`, `partial-01` y `partial-02`), una falsa abstención y ninguna falsa
+respuesta. Los casos existentes no produjeron nuevos fallos de grounding; cuando
+el contexto de producto hace que el gate admita evidencia insuficiente, la
+abstención canónica del LLM se devuelve sin sources.
 
 ## Baseline 1.1.0 y análisis del relevance gate
 

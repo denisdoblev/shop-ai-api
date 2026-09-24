@@ -67,8 +67,6 @@ describe('RAG PDF ingestion integration', () => {
     const response = await supertest(app.getHttpServer() as unknown as App)
       .post(`/api/products/${product.id}/rag-documents`)
       .auth(token, { type: 'bearer' })
-      .field('chunkSize', '200')
-      .field('chunkOverlap', '20')
       .attach('file', fixturePath, { contentType: 'application/pdf' })
       .expect(201);
 
@@ -96,6 +94,10 @@ describe('RAG PDF ingestion integration', () => {
       name: 'rag-product-manual.pdf',
       status: RagDocumentStatus.READY,
       pageCount: 2,
+      metadata: {
+        chunkSize: 400,
+        chunkOverlap: 80,
+      },
     });
 
     const chunks = await dataSource

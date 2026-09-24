@@ -22,26 +22,45 @@ describe('ChunkingService', () => {
     ]);
   });
 
-  it('splits oversized text without exceeding the maximum', () => {
-    const paragraphs = Array.from({ length: 5 }, (_, paragraph) =>
-      Array.from({ length: 14 }, (_, word) => `p${paragraph}word${word}`).join(
-        ' ',
-      ),
-    );
-    const text = paragraphs.join('\n\n');
-    const chunks = service.chunk([{ pageNumber: 3, text }], {
-      chunkSize: 200,
-      chunkOverlap: 30,
-    });
+  it('splits at 400 characters with word-bounded overlap without crossing pages', () => {
+    const paragraph = (page: number, paragraphIndex: number) =>
+      Array.from(
+        { length: 36 },
+        (_, wordIndex) =>
+          `p${page}${paragraphIndex}${wordIndex.toString().padStart(3, '0')}`,
+      ).join(' ');
+    const pageText = (page: number) =>
+      [paragraph(page, 0), paragraph(page, 1)].join('\n\n');
 
-    expect(chunks.length).toBeGreaterThan(1);
-    expect(chunks.every(({ content }) => content.length <= 200)).toBe(true);
-    expect(chunks.every(({ pageNumber }) => pageNumber === 3)).toBe(true);
-    const previousWords = new Set(chunks[0]?.content.split(/\s+/u) ?? []);
-    const overlapWords = chunks[1]?.content
-      .split(/\s+/u)
-      .filter((word) => previousWords.has(word));
-    expect(overlapWords?.length).toBeGreaterThan(0);
+    const chunks = service.chunk(
+      [
+        { pageNumber: 1, text: pageText(1) },
+        { pageNumber: 2, text: pageText(2) },
+      ],
+      { chunkSize: 400, chunkOverlap: 80 },
+    );
+
+    expect(chunks).toHaveLength(4);
+    expect(chunks.every(({ content }) => content.length <= 400)).toBe(true);
+    expect(chunks.map(({ pageNumber }) => pageNumber)).toEqual([1, 1, 2, 2]);
+
+    for (const firstChunkIndex of [0, 2]) {
+      const first = chunks[firstChunkIndex]?.content ?? '';
+      const second = chunks[firstChunkIndex + 1]?.content ?? '';
+      const firstWords = first.split(' ');
+      const expectedOverlap = firstWords.slice(-11).join(' ');
+      const overlapWithPreviousWord = firstWords.slice(-12).join(' ');
+
+      expect(expectedOverlap.length).toBeLessThanOrEqual(80);
+      expect(overlapWithPreviousWord.length).toBeGreaterThan(80);
+      expect(second.startsWith(`${expectedOverlap} `)).toBe(true);
+    }
+
+    const lastPageOneWords = new Set(chunks[1]?.content.split(/\s+/u));
+    const firstPageTwoWords = chunks[2]?.content.split(/\s+/u) ?? [];
+    expect(firstPageTwoWords.some((word) => lastPageOneWords.has(word))).toBe(
+      false,
+    );
   });
 
   it('hard-cuts only a word that itself exceeds the maximum', () => {
