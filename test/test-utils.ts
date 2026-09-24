@@ -1,4 +1,4 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, TestingModule, TestingModuleBuilder } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { DataSource } from 'typeorm';
@@ -24,10 +24,15 @@ const TABLES_TO_CLEAR = [
   'users',
 ].join(', ');
 
-export async function initTestApp(): Promise<INestApplication> {
-  const moduleFixture: TestingModule = await Test.createTestingModule({
+export async function initTestApp(
+  configureModule?: (builder: TestingModuleBuilder) => TestingModuleBuilder,
+): Promise<INestApplication> {
+  const builder = Test.createTestingModule({
     imports: [AppModule],
-  }).compile();
+  });
+  const moduleFixture: TestingModule = await (
+    configureModule?.(builder) ?? builder
+  ).compile();
 
   const app = moduleFixture.createNestApplication();
   configureApplication(app);

@@ -245,9 +245,12 @@ generation, and the existing `rag_documents` and `rag_chunks` entities.
 Administrators can synchronously ingest an in-memory PDF with
 `POST /api/products/:productId/rag-documents`; parsing, page-aware chunking, and
 embedding complete before one transaction persists the ready document and its
-chunks. See [`docs/rag-ingestion.md`](docs/rag-ingestion.md) for limits and
-failure behavior. `EmbeddingsService` delegates queries and document batches to
-a replaceable provider. The internal `RetrievalService`
+chunks. New uploads default to 400-character chunks with 80 characters of
+word-bounded overlap. Existing documents retain their recorded configuration
+and must be uploaded again as new content to use the new defaults; ingestion
+does not reindex them. See [`docs/rag-ingestion.md`](docs/rag-ingestion.md) for
+limits and failure behavior. `EmbeddingsService` delegates queries and document
+batches to a replaceable provider. The internal `RetrievalService`
 embeds a query once, searches ready documents with cosine distance, optionally
 filters by product, and returns the requested top K chunks with document, page,
 and section source fields but without stored vectors. It excludes soft-deleted
@@ -257,9 +260,11 @@ separation through a configurable relevance gate, returns deterministic
 insufficiency without generation when evidence is too weak or ambiguous, or
 builds a grounded prompt and delegates to the provider-neutral `LlmService`. The Ollama
 LLM adapter uses non-streaming `qwen3:8b` with thinking disabled. See
-[`docs/rag-generation.md`](docs/rag-generation.md). This internal flow does not
-expose an HTTP endpoint; `ChatController` retains the `ai/chat` base path without
-handlers.
+[`docs/rag-generation.md`](docs/rag-generation.md). Authenticated users and
+admins access the product-scoped single-turn flow through `POST /api/ai/ask`;
+`ChatController` retains the `ai/chat` base path without handlers. A successful
+insufficiency response is `200` with `sources: []`; missing products return
+`404`, temporary provider failures `503`, and LLM timeouts `504`.
 
 The internal retrieval contract is:
 

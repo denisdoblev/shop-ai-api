@@ -9,7 +9,7 @@ This document is the source of truth for conventions established by the reposito
 - **Explicit:** Injecting TypeORM `Repository<Entity>` directly is the established repository/data-access pattern. A custom repository layer is optional, not required (`src/auth/auth.service.ts`, `AGENTS.md`).
 - **Strong inferred:** Shared application code belongs in `src/common/`, configuration factories in `src/config/`, and datasource/migrations in `src/db/`.
 - **Explicit:** AI capabilities belong to the `src/ai/` aggregate. `AiModule` composes chat orchestration, RAG persistence/workflow modules, and LLM integration; RAG entities live under `src/ai/rag/entities/`.
-- **Explicit:** The AI aggregate exposes synchronous, administrator-only local PDF ingestion under a product. The PDF remains in memory, parsing preserves page numbering, chunking never crosses a page, embeddings are validated before persistence, and one transaction writes a ready document plus all chunks. `EmbeddingsService` depends on the provider-neutral `EMBEDDING_PROVIDER` token, and `EmbeddingsModule` selects the configured adapter. The Ollama adapter owns EmbeddingGemma input formatting and response validation. `RetrievalService` performs top-K pgvector cosine search over ready, active documents and model-compatible 768-dimensional embeddings, with an optional product filter. It returns plain retrieval results with document/page/section source fields and without stored vectors. `RagService` is the sole grounded-answer orchestrator: it evaluates the configured strong similarity or moderate similarity plus top 1/top 2 gap, short-circuits to deterministic insufficiency when evidence is weak or ambiguous, builds the delimited prompt from the selected chunks, delegates to `LlmService`, and maps sources from exactly those chunks. `LlmService` depends on the provider-neutral `LLM_PROVIDER`; the Ollama adapter uses non-streaming `qwen3:8b` with thinking disabled. Chat depends on RAG rather than duplicating retrieval/generation orchestration. No chat HTTP handler is established.
+- **Explicit:** The AI aggregate exposes synchronous, administrator-only local PDF ingestion under a product. The PDF remains in memory, parsing preserves page numbering, chunking never crosses a page, embeddings are validated before persistence, and one transaction writes a ready document plus all chunks. `EmbeddingsService` depends on the provider-neutral `EMBEDDING_PROVIDER` token, and `EmbeddingsModule` selects the configured adapter. The Ollama adapter owns EmbeddingGemma input formatting and response validation. `RetrievalService` first offers one strict Spanish PostgreSQL FTS match over active chunks of ready, active documents/products, with an optional product filter and no embedding dependency; only a miss proceeds to the unchanged top-K pgvector cosine search over model-compatible 768-dimensional embeddings. The common chunk contract contains source/prompt fields, while vector results expose `similarity` and lexical results expose `lexicalScore`. `RagService` is the sole grounded-answer orchestrator: it validates an optional active product, uses a lexical winner as the only context or evaluates the configured strong similarity or moderate similarity plus top 1/top 2 gap, short-circuits to deterministic insufficiency when vector evidence is weak or ambiguous, builds the delimited prompt from the selected chunks, delegates to `LlmService`, maps provider failures to the public availability contract, and maps sources from exactly those chunks. `LlmService` depends on the provider-neutral `LLM_PROVIDER`; the Ollama adapter uses non-streaming `qwen3:8b` with thinking disabled. `POST /api/ai/ask` exposes only product-scoped, authenticated, single-turn RAG; chat remains without handlers.
 - **Not established in the current codebase:** CQRS, domain events, use-case classes, or a formal hexagonal layer structure.
 
 ## 2. File and Folder Naming
@@ -45,6 +45,7 @@ This document is the source of truth for conventions established by the reposito
 
 - **Explicit:** All routes use the `/api` prefix and lowercase kebab-case route segments. Swagger is served at `/api/docs`.
 - **Explicit:** Register and login are POST endpoints returning 201. Check status is GET returning 200.
+- **Explicit:** `POST /api/ai/ask` requires authentication without a role restriction, requires a product UUID and a 1–1000 character nonblank question, and returns 200 for both grounded answers and canonical insufficiency. `topK` remains internal. Sources expose `pageStart`/`pageEnd`, never a conceptual `pageNumber`.
 - **Explicit:** Register, login, and check status return `AuthResponseDto`: `id`, `email`, `fullname`, `isActive`, `roles`, and `token`. Passwords and persistence timestamps are never returned.
 - **Strong inferred:** Request bodies use validated DTO classes and successful responses are plain objects without a response envelope.
 - **Strong inferred:** Shared `Api*Responses` decorators document success/common failure statuses and bearer auth; DTO/entity fields use `@ApiProperty`.
@@ -63,7 +64,8 @@ This document is the source of truth for conventions established by the reposito
 - **Explicit:** The initial users migration targets an empty database. It does not upgrade an existing numeric-ID `users` table.
 - **Explicit:** Catalog relationships use named foreign keys with `ON DELETE RESTRICT`.
   Product filters use query builders and partial indexes, including typed EAV
-  indexes. RAG similarity search uses the cosine `<=>` operator and the partial
+  indexes. RAG strict lexical search uses a partial GIN index on the Spanish
+  `section + content` tsvector for active chunks. RAG similarity search uses the cosine `<=>` operator and the partial
   HNSW `vector_cosine_ops` index on active non-null embeddings. Standalone seeds
   run all writes through one `EntityManager` transaction. Locking remains
   unestablished.
@@ -93,6 +95,7 @@ This document is the source of truth for conventions established by the reposito
 - **Explicit:** Nest uses `nestjs-pino`; production logs at info and other environments at debug. Development output uses `pino-pretty`; tests omit the transport so its worker does not keep Jest alive.
 - **Explicit:** Authorization headers and password/token request fields are redacted.
 - **Explicit:** `console.error` is reserved for fatal bootstrap failure before a reliable application logger is available.
+- **Explicit:** `rag_retrieval_completed` records retrieval mode, counts, one lexical score or vector similarities, duration, and decision reason. Questions and chunk content are never logged.
 - **Not established in the current codebase:** metrics, tracing, audit logs, or error-reporting integrations.
 
 ## 10. Configuration and Environment

@@ -4,6 +4,34 @@ All routes are served below `/api`; the exhaustive OpenAPI contract is available
 at `/api/docs`. Responses are plain JSON objects without an envelope. Validation
 rejects unknown properties.
 
+## AI answers
+
+`POST /ai/ask` performs one authenticated, product-scoped RAG answer. Both
+`user` and `admin` roles may call it. The JSON body is:
+
+```json
+{
+  "productId": "3d6f0a36-40ed-4d30-ae15-7f12ab21379a",
+  "question": "¿Este producto tiene cancelación activa de ruido?"
+}
+```
+
+`productId` is required and must be a UUID. `question` must contain 1–1000
+characters and at least one non-whitespace character. `topK` is internal, and
+unknown fields are rejected.
+
+A `200` response contains `answer` plus `sources`. Each source exposes only
+`chunkId`, `documentId`, `documentName`, `productId`, `chunkIndex`, nullable
+`pageStart`/`pageEnd`, and nullable `section`. `200` with `sources: []` and the
+canonical insufficiency answer is valid when no sufficient evidence exists.
+An absent or deleted product returns `404`; temporary provider failures return
+`503`, and an LLM timeout returns `504`. Authentication failures return `401`.
+Unexpected retrieval or database errors use Nest's standard `500` response.
+
+This endpoint is single-turn. Chat sessions, conversation state, public `topK`,
+prompts, embeddings, chunk content, provider metadata, and model details are not
+part of the contract.
+
 ## Security
 
 Catalog reads are public. Every catalog mutation requires a bearer JWT belonging
@@ -168,9 +196,14 @@ The service uses a constant set of aggregate queries without per-product calls.
 `multipart/form-data`:
 
 - `file`: required PDF kept in memory for the duration of the request.
-- `chunkSize`: optional integer from 200 through 4000; default `1200`.
+- `chunkSize`: optional integer from 200 through 4000; default `400`.
 - `chunkOverlap`: optional non-negative integer smaller than `chunkSize`;
-  default `200`.
+  default `80`.
+
+The defaults affect new uploads only. Existing documents keep the values in
+`rag_documents.metadata` and must be uploaded again as new content to use
+`400/80`; this endpoint does not reindex stored documents. Uploading identical
+content while its current document remains active returns 409.
 
 The 201 response contains `id`, `productId`, `name`, `sourceType`, `mimeType`,
 `status`, `pageCount`, `chunkCount`, `fileSizeBytes`, `processedAt`, and

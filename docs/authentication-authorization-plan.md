@@ -1,8 +1,10 @@
 # Authentication and authorization implementation plan
 
-Status: **implemented for catalog endpoints and favorites**. Favorites establish
-the first service-scoped ownership model. Other personal-resource ownership and
-a database role constraint remain deferred.
+Status: **implemented for catalog endpoints, favorites, and single-turn AI**.
+Favorites establish the first service-scoped ownership model. The AI question
+endpoint requires an active authenticated user but remains stateless and does
+not create an owned conversation resource. Other personal-resource ownership
+and a database role constraint remain deferred.
 
 ## 1. Executive recommendation
 
@@ -17,8 +19,9 @@ and a new authorization dependency would add complexity without solving a
 current requirement.
 
 The current code enforces this target policy: catalog reads are public, every
-catalog mutation requires `ADMIN`, and favorite routes require an active user
-while scoping every operation to `user.id` from Passport.
+catalog mutation requires `ADMIN`, favorite routes require an active user while
+scoping every operation to `user.id` from Passport, and the product-scoped AI
+question endpoint requires authentication without a role restriction.
 
 ## 2. Baseline repository diagnosis
 
@@ -183,6 +186,7 @@ means the resource is catalog data, not user-owned data.
 | `POST` | `/api/auth/register` | Public | None | None | Server assigns the default user role. |
 | `POST` | `/api/auth/login` | Public | None | None | Returns JWT after credential and active-status checks. |
 | `GET` | `/api/auth/check-status` | Authenticated | Self | `@Auth()` + `@GetUser()` | Already enforced; returns the authenticated principal only. |
+| `POST` | `/api/ai/ask` | Authenticated | None | `@Auth()` | Stateless, product-scoped RAG question; it does not create a conversation resource. |
 | `GET` | `/api/favorites` | Authenticated | Self | `@Auth()` + `@GetUser('id')` | Optional `productId`; service filters by authenticated user. |
 | `PUT` | `/api/favorites/:productId` | Authenticated | Self | `@Auth()` + `@GetUser('id')` | Idempotent create/restore; client cannot select owner. |
 | `DELETE` | `/api/favorites/:productId` | Authenticated | Self | `@Auth()` + `@GetUser('id')` | Idempotent soft delete scoped by user and product. |
@@ -218,10 +222,11 @@ means the resource is catalog data, not user-owned data.
 | `PATCH` | `/api/products/:productId/specifications/:attributeId` | Admin | None | `@Auth(ADMIN)` | Catalog mutation. |
 | `DELETE` | `/api/products/:productId/specifications/:attributeId` | Admin | None | `@Auth(ADMIN)` | Soft delete. |
 
-Favorites, comparisons, and conversations are intentionally absent from the
-matrix because no real endpoint exists. Their baseline policy should be
-authenticated plus owner-scoped, not admin-only; their exact rows must be added
-when their contracts are designed.
+Comparisons and persisted conversations are intentionally absent from the
+matrix because no real endpoint exists. The single-turn AI endpoint above is
+stateless and therefore does not establish conversation ownership. Future
+personal-resource contracts should be authenticated plus owner-scoped, not
+admin-only; their exact rows must be added when they are designed.
 
 ## 6. Incremental implementation plan
 

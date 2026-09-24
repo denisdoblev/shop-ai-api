@@ -1,5 +1,6 @@
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Test, TestingModule } from '@nestjs/testing';
+import { AiController } from './ai.controller';
 import { AiModule } from './ai.module';
 import { ChatController } from './chat/chat.controller';
 import { ChatService } from './chat/chat.service';
@@ -42,6 +43,7 @@ describe('AiModule', () => {
     const chatService = module.get(ChatService);
 
     expect(module.get(ChatController)).toBeDefined();
+    expect(module.get(AiController)).toBeDefined();
     expect(module.get(IngestionService)).toBeDefined();
     expect(module.get(ChunkingService)).toBeDefined();
     expect(module.get(EmbeddingsService)).toBeDefined();
