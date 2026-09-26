@@ -4,33 +4,38 @@ All routes are served below `/api`; the exhaustive OpenAPI contract is available
 at `/api/docs`. Responses are plain JSON objects without an envelope. Validation
 rejects unknown properties.
 
-## AI answers
+## AI assistant
 
-`POST /ai/ask` performs one authenticated, product-scoped RAG answer. Both
-`user` and `admin` roles may call it. The JSON body is:
+`POST /ai/chat` is the assistant's only public HTTP interface. It performs one
+authenticated, stateless product conversation turn for `user` and `admin` roles.
+The request is `{ "message": string, "context": { "currentProductId": uuid } }`.
+The product is validated before the LLM runs and is injected server-side into the
+two enabled tools; tool arguments cannot select another product. The response is
+the safe `{ "answer": string, "sources": AiDocumentSource[] }` shape. Each source
+exposes only `chunkId`, `documentId`, `documentName`, `productId`, `chunkIndex`,
+nullable `pageStart`/`pageEnd`, and nullable `section`. Invalid
+input returns 400, missing products 404, unavailable AI dependencies or exhausted
+tool limits 503, rate or concurrency limits 429, and LLM timeouts 504.
+Authentication failures return 401 and unexpected failures use Nest's standard
+500 response. Conversation state, public `topK`, prompts, embeddings, chunk
+content, provider metadata, and model details are not part of the contract. The
+tool registry, retry policy, resource limits, and operational events are
+documented in [`ai-chat-tool-calling.md`](ai-chat-tool-calling.md).
 
-```json
-{
-  "productId": "3d6f0a36-40ed-4d30-ae15-7f12ab21379a",
-  "question": "¿Este producto tiene cancelación activa de ruido?"
-}
-```
+The grounded single-turn generation implemented by `RagService` remains an
+internal capability for evaluations and integration tests; it has no controller
+or public HTTP contract.
 
-`productId` is required and must be a UUID. `question` must contain 1–1000
-characters and at least one non-whitespace character. `topK` is internal, and
-unknown fields are rejected.
+### Deployment and rollback
 
-A `200` response contains `answer` plus `sources`. Each source exposes only
-`chunkId`, `documentId`, `documentName`, `productId`, `chunkIndex`, nullable
-`pageStart`/`pageEnd`, and nullable `section`. `200` with `sources: []` and the
-canonical insufficiency answer is valid when no sufficient evidence exists.
-An absent or deleted product returns `404`; temporary provider failures return
-`503`, and an LLM timeout returns `504`. Authentication failures return `401`.
-Unexpected retrieval or database errors use Nest's standard `500` response.
+When frontend and backend releases are independent, deploy and verify the
+frontend version that consumes chat first, then deploy the backend contraction.
+The retired URL uses the framework's normal `404`; there is no redirect,
+compatibility adapter, `410`, or deprecation header.
 
-This endpoint is single-turn. Chat sessions, conversation state, public `topK`,
-prompts, embeddings, chunk content, provider metadata, and model details are not
-part of the contract.
+Rollback restores the previous controller, BFF and DTOs and regenerates the
+OpenAPI-derived frontend contract. This transition has no database migration,
+data rewrite, dependency change, or environment-variable change.
 
 ## Security
 

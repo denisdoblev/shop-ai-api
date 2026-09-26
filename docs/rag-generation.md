@@ -1,26 +1,29 @@
 # Grounded RAG generation
 
-`RagService` owns the complete answer workflow. It accepts a
+`RagEvidenceService` owns product validation, lexical/vector retrieval, the
+relevance gate, chunk selection and retrieval observability. `RagService` consumes
+that evidence and owns the internal grounded single-turn generation workflow. It accepts a
 question plus optional `productId` and `topK`, attempts a strict Spanish lexical
 match and otherwise retrieves vector-ranked chunks, evaluates the top two
 similarities through a configurable relevance gate,
 constructs a source-delimited grounding prompt, and delegates generation to the
-provider-neutral `LlmService`. The authenticated single-turn HTTP entry point is
-`POST /api/ai/ask`; the empty chat scaffold remains unexposed.
+provider-neutral `LlmService`. This workflow has no public HTTP entry point and is
+preserved for evaluations and integration tests. The same evidence service is
+reused by the documentation tool behind `POST /api/ai/chat`, the assistant's
+only public HTTP interface, without an intermediate LLM generation.
 
 Omitting `productId` performs global retrieval. When supplied, `productId` must
 be a valid UUID and scopes retrieval to that product; invalid values are
-rejected before embeddings, database access, or generation. `RagService`
-additionally verifies that a supplied product is active before retrieval and
-retains it for query enrichment. The HTTP DTO always requires `productId`, while
-internal callers retain the global retrieval option.
+rejected before embeddings, database access, or generation. `RagEvidenceService`
+also verifies that a supplied product is active before retrieval and
+retains it for query enrichment. Internal callers retain the global retrieval
+option.
 
-The HTTP endpoint uses the configured default `topK`, accepts users and admins,
-and returns `200` for both generated answers and canonical insufficiency with an
-empty `sources` array. Missing products return `404`. Normalized embedding and
-LLM provider failures return `503`, except LLM timeouts, which return `504`.
-Unexpected retrieval and database failures remain standard `500` errors without
-leaking internal details.
+Internal callers use the configured default `topK` when they omit it and receive
+either a generated answer or canonical insufficiency with an empty `sources`
+array. Missing products and normalized provider failures retain their Nest
+exceptions so integration tests can verify the same service semantics without
+exposing a second HTTP contract.
 
 ## Runtime flow
 

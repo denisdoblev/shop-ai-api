@@ -83,7 +83,9 @@ pnpm run test:integration
 
 These tests call `http://localhost:11434` directly and enforce the same
 `TEST_DB_NAME` `_test` safeguards as E2E. Generation tests also require
-`qwen3:8b`. `pnpm test` does not require Ollama or PostgreSQL.
+`qwen3:8b`; the tool-calling suite preflights the daemon/model and exercises
+catalog, documentation and combined tool selection. `pnpm test` does not require
+Ollama or PostgreSQL.
 
 For a reproducible 20-case retrieval and generation baseline, run
 `pnpm test:rag-eval` after the same database setup. Quality misses are reported
@@ -260,11 +262,19 @@ separation through a configurable relevance gate, returns deterministic
 insufficiency without generation when evidence is too weak or ambiguous, or
 builds a grounded prompt and delegates to the provider-neutral `LlmService`. The Ollama
 LLM adapter uses non-streaming `qwen3:8b` with thinking disabled. See
-[`docs/rag-generation.md`](docs/rag-generation.md). Authenticated users and
-admins access the product-scoped single-turn flow through `POST /api/ai/ask`;
-`ChatController` retains the `ai/chat` base path without handlers. A successful
-insufficiency response is `200` with `sources: []`; missing products return
-`404`, temporary provider failures `503`, and LLM timeouts `504`.
+[`docs/rag-generation.md`](docs/rag-generation.md). `RagService` preserves the
+single-turn grounded generation workflow only as an internal capability for
+evaluations and integration tests. Authenticated users and admins access the
+assistant exclusively through `POST /api/ai/chat`, a stateless tool loop bound to `context.currentProductId`:
+it can read the current catalog record and retrieve current-product documentation,
+while global catalog search, stock and persisted conversation memory remain out of scope.
+The endpoint enforces tool use for nontrivial requests, five requests per minute and
+one concurrent operation per authenticated user, four concurrent operations per API
+process, a 150-second total deadline, and a 12,000-character budget for structured
+catalog tool results. A successful canonical
+insufficiency response is `200` with `sources: []`; missing products return `404`,
+rate or concurrency excesses `429`, temporary provider failures `503`, and timeouts
+`504`.
 
 The internal retrieval contract is:
 
