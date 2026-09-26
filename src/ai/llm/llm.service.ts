@@ -3,6 +3,8 @@ import { LLM_PROVIDER } from './llm-provider.interface';
 import type {
   GenerateInput,
   GenerateOutput,
+  LlmChatInput,
+  LlmChatOutput,
   LlmProvider,
 } from './llm-provider.interface';
 
@@ -16,10 +18,21 @@ export class LlmService {
   ) {}
 
   async generate(input: GenerateInput): Promise<GenerateOutput> {
+    const output = await this.chat({
+      messages: [
+        { role: 'system', content: input.systemPrompt },
+        { role: 'user', content: input.prompt },
+      ],
+    });
+
+    return { text: output.message.content, model: output.model };
+  }
+
+  async chat(input: LlmChatInput): Promise<LlmChatOutput> {
     const startedAt = Date.now();
 
     try {
-      const output = await this.provider.generate(input);
+      const output = await this.provider.chat(input);
       this.logger.debug({
         event: 'llm_generation_completed',
         model: output.model,

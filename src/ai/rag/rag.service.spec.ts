@@ -12,6 +12,7 @@ import { LlmService } from '../llm/llm.service';
 import { EmbeddingProviderError } from './embeddings/embedding-provider.error';
 import { INSUFFICIENT_INFORMATION_ANSWER } from './grounding-prompt';
 import { RagService } from './rag.service';
+import { RagEvidenceService } from './rag-evidence.service';
 import {
   LexicalRetrievedChunk,
   RetrievedChunk,
@@ -72,11 +73,14 @@ describe('RagService', () => {
   const productRepository = {
     findOneBy: jest.fn(),
   };
-  const service = new RagService(
+  const evidenceService = new RagEvidenceService(
     retrievalService as unknown as RetrievalService,
-    llmService as unknown as LlmService,
     configService as unknown as ConfigService,
     productRepository as unknown as Repository<Product>,
+  );
+  const service = new RagService(
+    evidenceService,
+    llmService as unknown as LlmService,
   );
   const loggerDebugSpy = jest
     .spyOn(Logger.prototype, 'debug')

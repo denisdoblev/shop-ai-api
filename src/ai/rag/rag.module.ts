@@ -5,6 +5,7 @@ import { Product } from '../../products/entities/product.entity';
 import { LlmModule } from '../llm/llm.module';
 import { IngestionModule } from './ingestion/ingestion.module';
 import { RagService } from './rag.service';
+import { RagEvidenceService } from './rag-evidence.service';
 import { RetrievalModule } from './retrieval/retrieval.module';
 
 @Module({
@@ -15,7 +16,7 @@ import { RetrievalModule } from './retrieval/retrieval.module';
     RetrievalModule,
     LlmModule,
   ],
-  providers: [RagService],
-  exports: [IngestionModule, RagService],
+  providers: [RagEvidenceService, RagService],
+  exports: [IngestionModule, RagEvidenceService, RagService],
 })
 export class RagModule {}

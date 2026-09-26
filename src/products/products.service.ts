@@ -22,10 +22,25 @@ import {
 } from './dto';
 import { Product } from './entities/product.entity';
 import { ProductSpecification } from './entities/product-specification.entity';
+import { ProductPrice } from './entities/product-price.entity';
 
 interface PostgresError {
   code?: string;
   constraint?: string;
+}
+
+export interface ProductCatalogDetails {
+  name: string;
+  model: string | null;
+  brand: string;
+  category: string;
+  description: string | null;
+  latestPrice: { amount: number; currency: string; recordedAt: Date } | null;
+  specifications: Array<{
+    name: string;
+    value: string | number | boolean;
+    unit: string | null;
+  }>;
 }
 
 @Injectable()
@@ -185,6 +200,51 @@ export class ProductsService {
     return this.toResponse(await this.findEntity(id));
   }
 
+  async findCatalogDetails(id: string): Promise<ProductCatalogDetails> {
+    const product = await this.productRepository.findOne({
+      where: { id },
+      relations: { brand: true, category: true },
+    });
+    if (!product)
+      throw new NotFoundException(`Product with id ${id} not found`);
+
+    const [latestPrice, specifications] = await Promise.all([
+      this.productRepository.manager.getRepository(ProductPrice).findOne({
+        where: { productId: id },
+        order: { recordedAt: 'DESC' },
+      }),
+      this.productRepository.manager.getRepository(ProductSpecification).find({
+        where: { productId: id },
+        relations: { attribute: true },
+        order: { attribute: { name: 'ASC' } },
+      }),
+    ]);
+
+    const parsedPrice = latestPrice === null ? null : Number(latestPrice.price);
+    if (parsedPrice !== null && !Number.isFinite(parsedPrice))
+      throw new Error('Product price is invalid');
+    return {
+      name: product.name,
+      model: product.model,
+      brand: product.brand.name,
+      category: product.category.name,
+      description: product.description,
+      latestPrice:
+        latestPrice === null
+          ? null
+          : {
+              amount: parsedPrice as number,
+              currency: latestPrice.currency,
+              recordedAt: latestPrice.recordedAt,
+            },
+      specifications: specifications.map((specification) => ({
+        name: specification.attribute.name,
+        value: this.specificationValue(specification),
+        unit: specification.attribute.unit,
+      })),
+    };
+  }
+
   async update(
     id: string,
     updateProductDto: UpdateProductDto,
@@ -248,6 +308,17 @@ export class ProductsService {
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
     };
+  }
+
+  private specificationValue(
+    specification: ProductSpecification,
+  ): string | number | boolean {
+    if (specification.stringValue !== null) return specification.stringValue;
+    if (specification.booleanValue !== null) return specification.booleanValue;
+    const value = Number(specification.numericValue);
+    if (!Number.isFinite(value))
+      throw new Error('Product specification is invalid');
+    return value;
   }
 
   private throwIfSlugConflict(error: unknown): void {

@@ -6,7 +6,7 @@ import { AppModule } from '../src/app.module';
 import { User } from '../src/auth/entities/user.entity';
 import { ValidRoles } from '../src/auth/interfaces';
 import dataSource from '../src/db/data-source';
-import { configureApplication } from '../src/config';
+import { configureApplication, setupSwagger } from '../src/config';
 import { clearTestDatabase } from '../src/config/e2e-database.config';
 
 const TABLES_TO_CLEAR = [
@@ -36,6 +36,7 @@ export async function initTestApp(
 
   const app = moduleFixture.createNestApplication();
   configureApplication(app);
+  setupSwagger(app);
   await app.init();
 
   return app;

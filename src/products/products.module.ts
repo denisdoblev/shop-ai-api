@@ -42,5 +42,6 @@ import { ProductSearchService } from './product-search.service';
     ProductSpecificationsService,
     ProductPricesService,
   ],
+  exports: [ProductsService],
 })
 export class ProductsModule {}

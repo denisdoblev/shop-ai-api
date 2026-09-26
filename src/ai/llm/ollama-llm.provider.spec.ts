@@ -14,6 +14,16 @@ describe('OllamaLlmProvider', () => {
   let provider: OllamaLlmProvider;
   let fetchMock: jest.MockedFunction<typeof fetch>;
 
+  async function generate() {
+    const result = await provider.chat({
+      messages: [
+        { role: 'system' as const, content: input.systemPrompt },
+        { role: 'user' as const, content: input.prompt },
+      ],
+    });
+    return { text: result.message.content, model: result.model };
+  }
+
   beforeEach(() => {
     provider = new OllamaLlmProvider(options);
     fetchMock = jest.fn();
@@ -36,7 +46,7 @@ describe('OllamaLlmProvider', () => {
       ),
     );
 
-    await expect(provider.generate(input)).resolves.toEqual({
+    await expect(generate()).resolves.toEqual({
       text: 'Yes, it has a button.',
       model: 'qwen3:8b',
     });
@@ -57,6 +67,49 @@ describe('OllamaLlmProvider', () => {
         }),
       }),
     );
+  });
+
+  it('serializes tools and accepts an empty assistant message with tool calls', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          model: 'qwen3:8b',
+          message: {
+            role: 'assistant',
+            content: '',
+            tool_calls: [
+              { function: { name: 'get_current_product', arguments: {} } },
+            ],
+          },
+          done: true,
+        }),
+      ),
+    );
+
+    await expect(
+      provider.chat({
+        messages: [{ role: 'user', content: '¿Cuánto cuesta?' }],
+        tools: [
+          {
+            name: 'get_current_product',
+            description: 'Obtiene el producto',
+            parameters: { type: 'object', properties: {} },
+          },
+        ],
+      }),
+    ).resolves.toEqual({
+      model: 'qwen3:8b',
+      message: {
+        role: 'assistant',
+        content: '',
+        toolCalls: [{ name: 'get_current_product', arguments: {} }],
+      },
+    });
+    expect(
+      JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string),
+    ).toMatchObject({
+      tools: [{ type: 'function', function: { name: 'get_current_product' } }],
+    });
   });
 
   it.each([
@@ -90,7 +143,7 @@ describe('OllamaLlmProvider', () => {
   ])('rejects %s', async (_, response) => {
     fetchMock.mockResolvedValue(response);
 
-    await expect(provider.generate(input)).rejects.toMatchObject({
+    await expect(generate()).rejects.toMatchObject({
       code: 'invalid_response',
     });
   });
@@ -98,7 +151,7 @@ describe('OllamaLlmProvider', () => {
   it('normalizes failed HTTP responses', async () => {
     fetchMock.mockResolvedValue(new Response('secret body', { status: 503 }));
 
-    await expect(provider.generate(input)).rejects.toEqual(
+    await expect(generate()).rejects.toEqual(
       new LlmProviderError('upstream_error', 'LLM provider returned HTTP 503'),
     );
   });
@@ -106,7 +159,7 @@ describe('OllamaLlmProvider', () => {
   it('normalizes network failures without exposing prompts', async () => {
     fetchMock.mockRejectedValue(new Error(`failure: ${input.prompt}`));
 
-    const request = provider.generate(input);
+    const request = generate();
     await expect(request).rejects.toEqual(
       new LlmProviderError('unavailable', 'LLM provider is unavailable'),
     );
@@ -124,7 +177,7 @@ describe('OllamaLlmProvider', () => {
       });
     });
 
-    const request = provider.generate(input);
+    const request = generate();
     const expectation = expect(request).rejects.toMatchObject({
       code: 'timeout',
     });
@@ -135,7 +188,7 @@ describe('OllamaLlmProvider', () => {
 
   it('rejects empty prompts before making a request', async () => {
     await expect(
-      provider.generate({ ...input, prompt: '  ' }),
+      provider.chat({ messages: [{ role: 'user', content: '  ' }] }),
     ).rejects.toMatchObject({ code: 'invalid_input' });
     expect(fetchMock).not.toHaveBeenCalled();
   });

@@ -1,2 +1,1 @@
-export * from './ask-ai.dto';
-export * from './ask-ai-response.dto';
+export * from './ai-document-source.dto';
